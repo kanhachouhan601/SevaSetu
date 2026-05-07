@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import LanguageSelector from "../components/LanguageSelector";
 import axios from "../api/axios";
 import {
   Heart, User, Stethoscope, Mail, Lock, Phone,
@@ -332,6 +333,9 @@ export default function Register() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-50 to-teal-50 flex items-center justify-center p-4 py-10">
       <div className="w-full max-w-md">
+        <div className="mb-4 flex justify-end">
+          <LanguageSelector compact />
+        </div>
         <div className="flex flex-col items-center mb-8">
           <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-sky-500 to-teal-500 flex items-center justify-center shadow-lg shadow-sky-200 mb-4">
             <Heart className="h-8 w-8 text-white fill-white" />

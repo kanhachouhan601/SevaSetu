@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "../api/axios";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
+import LanguageSelector from "../components/LanguageSelector";
 
 // ── Icons (inline SVG helpers) ───────────────────────────────
 const HeartIcon = () => (
@@ -88,30 +90,30 @@ function StatusBadge({ status }) {
   );
 }
 
-function getPatientNextStep(req) {
+function getPatientNextStep(req, t) {
   if (req.status === "pending") {
     return req.safetyReview?.required && !req.safetyReview?.approved
-      ? "Admin safety review ke baad nurse assign hogi."
-      : "Hum matching nurse dhoond rahe hain.";
+      ? t("nextSafety")
+      : t("nextPending");
   }
   if (req.status === "interview-scheduled") {
-    return "Long-term nurse ka AI interview scheduled hai.";
+    return t("nextInterview");
   }
   if (req.status === "matched") {
     return req.visit?.checkedInAt
-      ? "Visit start ho chuki hai."
-      : "Nurse aa rahi hai. Pahunchne par check-in OTP share karein.";
+      ? t("nextInProgress")
+      : t("nextMatched");
   }
   if (req.status === "in-progress") {
-    return "Visit chal rahi hai. Kaam complete hone par check-out OTP share karein.";
+    return t("nextInProgress");
   }
   if (req.status === "completed") {
     return req.nurseRating?.ratedAt
-      ? "Visit complete ho gayi hai."
-      : "Visit complete ho gayi hai. Nurse ko rating dein.";
+      ? t("nextCompletedRated")
+      : t("nextCompleted");
   }
-  if (req.status === "cancelled") return "Request cancel ho gayi hai.";
-  return "Request status update ka wait karein.";
+  if (req.status === "cancelled") return t("nextCancelled");
+  return t("nextPending");
 }
 
 function NotificationDropdown({ notifications }) {
@@ -350,6 +352,7 @@ function AIChatModal({ onClose }) {
 // ── Main Patient Dashboard ───────────────────────────────────
 export default function PatientDashboard() {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
 
   const [showSOS, setShowSOS] = useState(false);
   const [showChat, setShowChat] = useState(false);
@@ -637,10 +640,11 @@ export default function PatientDashboard() {
             </div>
             <div>
               <p className="font-bold text-sky-900 leading-none">SevaSetu</p>
-              <p className="text-xs text-sky-500 mt-0.5">{user?.name || user?.email || "Patient"}</p>
+              <p className="text-xs text-sky-500 mt-0.5">{user?.name || user?.email || t("patient")}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <LanguageSelector compact />
             <div className="relative">
               <button
                 onClick={openNotifications}
@@ -659,7 +663,7 @@ export default function PatientDashboard() {
               onClick={logout}
               className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-600 border border-gray-200 hover:border-red-200 px-3 py-1.5 rounded-lg transition-colors"
             >
-              <LogOutIcon /> Logout
+              <LogOutIcon /> {t("logout")}
             </button>
           </div>
         </div>
@@ -682,12 +686,12 @@ export default function PatientDashboard() {
         {/* ── Book a Nurse ── */}
         <div className="bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden">
           <div className="bg-gradient-to-r from-sky-500 to-sky-600 px-5 py-4">
-            <h2 className="text-white font-bold text-lg">Book a Nurse</h2>
-            <p className="text-sky-100 text-sm mt-0.5">Describe your need and we'll find the right nurse</p>
+            <h2 className="text-white font-bold text-lg">{t("bookNurse")}</h2>
+            <p className="text-sky-100 text-sm mt-0.5">{t("bookSubtitle")}</p>
           </div>
           <form onSubmit={handleBookSubmit} className="p-5 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Describe your problem</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("describeProblem")}</label>
               <textarea
                 rows={3}
                 className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-300 resize-none bg-gray-50"
@@ -700,7 +704,7 @@ export default function PatientDashboard() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Specific requirements</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("requirements")}</label>
               <textarea
                 rows={3}
                 className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-300 resize-none bg-gray-50"
@@ -718,11 +722,11 @@ export default function PatientDashboard() {
 
             {/* Mode toggle */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Service Type</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("serviceType")}</label>
               <div className="inline-flex rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
                 {[
-                  { val: "temporary", label: "⚡ Temporary" },
-                  { val: "longterm", label: "📅 Long-term" },
+                  { val: "temporary", label: `⚡ ${t("temporary")}` },
+                  { val: "longterm", label: `📅 ${t("longterm")}` },
                 ].map(opt => (
                   <button
                     key={opt.val}
@@ -744,7 +748,7 @@ export default function PatientDashboard() {
               <div className="rounded-xl border border-orange-100 bg-orange-50 px-3.5 py-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-orange-900">Pickup location</p>
+                    <p className="text-sm font-semibold text-orange-900">{t("pickupLocation")}</p>
                     <p className="text-xs text-orange-700">
                       Nearest nurse aur arrival time dikhane ke liye current location use hogi.
                     </p>
@@ -754,7 +758,7 @@ export default function PatientDashboard() {
                     onClick={capturePatientLocation}
                     className="rounded-lg bg-orange-600 px-3 py-2 text-xs font-semibold text-white hover:bg-orange-700"
                   >
-                    Use current location
+                    {t("useCurrentLocation")}
                   </button>
                 </div>
                 {(locationMsg || patientLocation) && (
@@ -767,7 +771,7 @@ export default function PatientDashboard() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Your Address</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("address")}</label>
               <input
                 type="text"
                 className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-300 bg-gray-50"
@@ -829,7 +833,7 @@ export default function PatientDashboard() {
               disabled={submitting}
               className="w-full bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white font-semibold py-3 px-4 rounded-xl transition-colors"
             >
-              {submitting ? "Submitting…" : "Submit Request"}
+              {submitting ? t("submitting") : t("submitRequest")}
             </button>
           </form>
         </div>
@@ -837,8 +841,8 @@ export default function PatientDashboard() {
         {/* ── My Requests ── */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-gray-900 text-lg">My Requests</h2>
-            <button onClick={fetchRequests} className="text-xs text-sky-600 hover:underline">Refresh</button>
+            <h2 className="font-bold text-gray-900 text-lg">{t("myRequests")}</h2>
+            <button onClick={fetchRequests} className="text-xs text-sky-600 hover:underline">{t("refresh")}</button>
           </div>
           {loadingReqs ? (
             <div className="space-y-3">
@@ -852,7 +856,7 @@ export default function PatientDashboard() {
           ) : requests.length === 0 ? (
             <div className="bg-white rounded-xl border border-dashed border-sky-200 p-8 text-center text-gray-400">
               <p className="text-3xl mb-2">🩺</p>
-              <p className="text-sm">No requests yet. Book a nurse above to get started.</p>
+              <p className="text-sm">{t("noRequests")}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -863,7 +867,7 @@ export default function PatientDashboard() {
                     <StatusBadge status={req.status} />
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
-                    <span>{req.mode === "longterm" ? "📅 Long-term" : "⚡ Temporary"}</span>
+                    <span>{req.mode === "longterm" ? `📅 ${t("longterm")}` : `⚡ ${t("temporary")}`}</span>
                     {req.amount > 0 && (
                       <span className="font-semibold text-emerald-600">
                         ₹{Number(req.amount).toLocaleString()}
@@ -874,7 +878,7 @@ export default function PatientDashboard() {
                     <span>{req.createdAt ? new Date(req.createdAt).toLocaleDateString("en-IN") : ""}</span>
                   </div>
                   <div className="mt-2 rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-xs font-medium text-sky-800">
-                    {getPatientNextStep(req)}
+                    {getPatientNextStep(req, t)}
                   </div>
                   {/* ✅ FIX: Nurse is populated as object under nurseId, not nurseId.name */}
                   {req.nurseId?.name && (
@@ -1064,7 +1068,7 @@ export default function PatientDashboard() {
         className="fixed bottom-6 left-6 flex items-center gap-2 bg-sky-500 hover:bg-sky-600 text-white font-semibold px-4 py-3 rounded-full shadow-lg shadow-sky-400/40 transition-all active:scale-95"
       >
         <BotIcon />
-        <span className="text-sm">AI Health Assistant</span>
+        <span className="text-sm">{t("aiAssistant")}</span>
       </button>
 
       {/* ── Modals ── */}

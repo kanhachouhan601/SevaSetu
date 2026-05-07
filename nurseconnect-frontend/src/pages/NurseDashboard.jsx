@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import axios from "../api/axios";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
+import LanguageSelector from "../components/LanguageSelector";
 
 // ── Icons ────────────────────────────────────────────────────
 const HeartIcon = () => (
@@ -126,6 +128,7 @@ function ScheduledInterviewAction({ req }) {
 
 export default function NurseDashboard() {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
 
   const [online, setOnline] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
@@ -361,7 +364,7 @@ export default function NurseDashboard() {
   }
 
   // Profile display values — nurseProfile has userId populated
-  const displayName = nurseProfile?.userId?.name || user?.name || "Nurse";
+  const displayName = nurseProfile?.userId?.name || user?.name || t("nurse");
   const displayEmail = nurseProfile?.userId?.email || user?.email || "";
   const specializations = nurseProfile?.specializations || [];
   const experience = nurseProfile?.experience || 0;
@@ -398,7 +401,7 @@ export default function NurseDashboard() {
           <div className="flex items-center gap-3">
             {/* ✅ FIX: Toggle calls API to update availability */}
             <div className="flex items-center gap-2 bg-white border border-teal-100 px-3 py-1.5 rounded-full">
-              <span className="text-xs text-gray-500">Status</span>
+              <span className="text-xs text-gray-500">{t("status")}</span>
               <button
                 role="switch"
                 aria-checked={online}
@@ -408,9 +411,11 @@ export default function NurseDashboard() {
                 <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transform transition-transform ${online ? "translate-x-4" : "translate-x-0.5"}`} />
               </button>
               <span className={`text-xs font-semibold ${online ? "text-teal-600" : "text-gray-500"}`}>
-                {online ? "Online" : "Offline"}
+                {online ? t("online") : t("offline")}
               </span>
             </div>
+
+            <LanguageSelector compact />
 
             <div className="relative">
               <button
@@ -431,7 +436,7 @@ export default function NurseDashboard() {
               onClick={logout}
               className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-600 border border-gray-200 hover:border-red-200 px-3 py-1.5 rounded-lg transition-colors"
             >
-              <LogOutIcon /> Logout
+              <LogOutIcon /> {t("logout")}
             </button>
           </div>
         </div>
@@ -449,7 +454,7 @@ export default function NurseDashboard() {
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h2 className="text-xl font-bold text-gray-900">{displayName}</h2>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${online ? "bg-teal-50 text-teal-700 border border-teal-200" : "bg-gray-100 text-gray-500 border border-gray-200"}`}>
-                  {online ? "🟢 Online" : "⚫ Offline"}
+                  {online ? `🟢 ${t("online")}` : `⚫ ${t("offline")}`}
                 </span>
                 {/* ✅ Show approval status */}
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
@@ -486,7 +491,7 @@ export default function NurseDashboard() {
                 onClick={updateCurrentLocation}
                 className="rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-700 hover:bg-teal-100"
               >
-                Update location
+                {t("updateLocation")}
               </button>
               {locationMessage && <p className="text-xs text-teal-700">{locationMessage}</p>}
             </div>
@@ -495,15 +500,15 @@ export default function NurseDashboard() {
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-xl border border-teal-100 bg-white p-3">
-            <p className="text-xs font-medium text-gray-500">Active Visits</p>
+            <p className="text-xs font-medium text-gray-500">{t("activeVisits")}</p>
             <p className="mt-1 text-xl font-bold text-gray-900">{activeVisits.length}</p>
           </div>
           <div className="rounded-xl border border-emerald-100 bg-white p-3">
-            <p className="text-xs font-medium text-gray-500">In Progress</p>
+            <p className="text-xs font-medium text-gray-500">{t("inProgress")}</p>
             <p className="mt-1 text-xl font-bold text-emerald-700">{inProgressVisits.length}</p>
           </div>
           <div className="rounded-xl border border-sky-100 bg-white p-3">
-            <p className="text-xs font-medium text-gray-500">Today Earnings</p>
+            <p className="text-xs font-medium text-gray-500">{t("todayEarnings")}</p>
             <p className="mt-1 text-xl font-bold text-sky-700">₹{Number(todayEarnings).toLocaleString()}</p>
           </div>
         </div>
@@ -511,8 +516,8 @@ export default function NurseDashboard() {
         {/* Open Requests */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-gray-900 text-lg">Open Requests</h2>
-            <button onClick={fetchJobs} className="text-xs text-teal-600 hover:underline">Refresh</button>
+            <h2 className="font-bold text-gray-900 text-lg">{t("openRequests")}</h2>
+            <button onClick={fetchJobs} className="text-xs text-teal-600 hover:underline">{t("refresh")}</button>
           </div>
           {!canHandleRequests ? (
             <div className="bg-white rounded-xl border border-amber-100 p-5 text-sm text-amber-700">
@@ -526,17 +531,17 @@ export default function NurseDashboard() {
           ) : jobs.length === 0 ? (
             <div className="bg-white rounded-xl border border-dashed border-teal-100 p-8 text-center text-gray-500">
               <p className="text-2xl mb-2">🩺</p>
-              <p className="text-sm">No open patient requests right now</p>
+              <p className="text-sm">{t("noOpenRequests")}</p>
             </div>
           ) : (
             <div className="space-y-3">
               {jobs.map(job => (
                 <div key={job._id || job.id} className="bg-white rounded-xl border border-teal-100 p-4">
                   <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <p className="font-semibold text-gray-900">{job.patientId?.name || "Patient"}</p>
+                    <p className="font-semibold text-gray-900">{job.patientId?.name || t("patient")}</p>
                     <StatusBadge status={job.status} />
                     <span className={`text-xs px-2 py-0.5 rounded-full ${job.mode === "longterm" ? "bg-sky-50 text-sky-700 border border-sky-100" : "bg-orange-50 text-orange-700 border border-orange-100"}`}>
-                      {job.mode === "longterm" ? "📅 Long-term" : "⚡ Temporary"}
+                      {job.mode === "longterm" ? `📅 ${t("longterm")}` : `⚡ ${t("temporary")}`}
                     </span>
                     {job.amount > 0 && (
                       <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
@@ -577,7 +582,7 @@ export default function NurseDashboard() {
                   >
                     <CheckIcon /> {applyingId === (job._id || job.id)
                       ? "Accepting..."
-                      : job.mode === "longterm" ? "Accept & Schedule Interview" : "Accept Request"}
+                      : job.mode === "longterm" ? t("acceptInterview") : t("acceptRequest")}
                   </button>
                 </div>
               ))}
@@ -588,8 +593,8 @@ export default function NurseDashboard() {
         {/* Assigned Requests */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-gray-900 text-lg">Assigned Requests</h2>
-            <button onClick={fetchRequests} className="text-xs text-teal-600 hover:underline">Refresh</button>
+            <h2 className="font-bold text-gray-900 text-lg">{t("assignedRequests")}</h2>
+            <button onClick={fetchRequests} className="text-xs text-teal-600 hover:underline">{t("refresh")}</button>
           </div>
           {safetyMessage && (
             <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -612,7 +617,7 @@ export default function NurseDashboard() {
           ) : requests.length === 0 ? (
             <div className="bg-white rounded-xl border border-dashed border-teal-100 p-8 text-center text-gray-500">
               <p className="text-2xl mb-2">📋</p>
-              <p className="text-sm">No assigned requests yet</p>
+              <p className="text-sm">{t("noAssignedRequests")}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -620,10 +625,10 @@ export default function NurseDashboard() {
                 <div key={req._id || req.id} className="bg-white rounded-xl border border-teal-100 p-4">
                   <div className="flex flex-wrap items-center gap-2 mb-2">
                     {/* ✅ FIX: patientId is populated object, not flat patientName */}
-                    <p className="font-semibold text-gray-900">{req.patientId?.name || "Patient"}</p>
+                    <p className="font-semibold text-gray-900">{req.patientId?.name || t("patient")}</p>
                     <StatusBadge status={req.status} />
                     <span className={`text-xs px-2 py-0.5 rounded-full ${req.mode === "longterm" ? "bg-sky-50 text-sky-700 border border-sky-100" : "bg-orange-50 text-orange-700 border border-orange-100"}`}>
-                      {req.mode === "longterm" ? "📅 Long-term" : "⚡ Temporary"}
+                      {req.mode === "longterm" ? `📅 ${t("longterm")}` : `⚡ ${t("temporary")}`}
                     </span>
                     {req.amount > 0 && (
                       <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
@@ -671,7 +676,7 @@ export default function NurseDashboard() {
                           onClick={() => raiseSOS(req._id || req.id)}
                           className="rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white hover:bg-red-700"
                         >
-                          Emergency SOS
+                          {t("emergencySos")}
                         </button>
                         <span className="text-xs text-red-700">Unsafe behavior ya emergency me use karein.</span>
                       </div>
@@ -679,7 +684,7 @@ export default function NurseDashboard() {
                   )}
                   {req.status === "matched" && (
                     <div className="mb-3 rounded-xl border border-teal-100 bg-teal-50/70 p-3">
-                      <p className="mb-2 text-xs font-semibold text-teal-900">Visit Check-in OTP</p>
+                      <p className="mb-2 text-xs font-semibold text-teal-900">{t("checkInOtp")}</p>
                       <div className="flex gap-2">
                         <input
                           value={visitInputs[req._id || req.id]?.checkInOtp || ""}
@@ -692,14 +697,14 @@ export default function NurseDashboard() {
                           onClick={() => checkInVisit(req._id || req.id)}
                           className="rounded-lg bg-teal-600 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-700"
                         >
-                          Check-in
+                          {t("checkIn")}
                         </button>
                       </div>
                     </div>
                   )}
                   {req.status === "in-progress" && (
                     <div className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50/70 p-3">
-                      <p className="mb-2 text-xs font-semibold text-emerald-900">Visit Check-out OTP</p>
+                      <p className="mb-2 text-xs font-semibold text-emerald-900">{t("checkOutOtp")}</p>
                       <div className="flex gap-2">
                         <input
                           value={visitInputs[req._id || req.id]?.checkOutOtp || ""}
@@ -712,7 +717,7 @@ export default function NurseDashboard() {
                           onClick={() => checkOutVisit(req._id || req.id)}
                           className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
                         >
-                          Check-out
+                          {t("checkOut")}
                         </button>
                       </div>
                     </div>
@@ -723,7 +728,7 @@ export default function NurseDashboard() {
                         <p className="text-xs text-gray-600">Patient behavior report submitted.</p>
                       ) : (
                         <div className="space-y-2">
-                          <p className="text-xs font-semibold text-gray-900">Patient behavior report</p>
+                          <p className="text-xs font-semibold text-gray-900">{t("patientReport")}</p>
                           <div className="grid grid-cols-2 gap-2">
                             <select
                               value={(reportDrafts[req._id || req.id] || {}).respectful || ""}
@@ -773,7 +778,7 @@ export default function NurseDashboard() {
                             onClick={() => submitPatientReport(req._id || req.id)}
                             className="rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white"
                           >
-                            Submit report
+                            {t("submitReport")}
                           </button>
                         </div>
                       )}

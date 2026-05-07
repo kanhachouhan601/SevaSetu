@@ -11,6 +11,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import LanguageSelector from "../components/LanguageSelector";
 
 const GoogleIcon = () => (
   <svg className="h-4 w-4" viewBox="0 0 24 24">
@@ -213,6 +214,9 @@ export default function HomePage() {
   // Home view
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-50 to-teal-50 flex flex-col items-center justify-center p-6">
+      <div className="absolute right-4 top-4">
+        <LanguageSelector compact />
+      </div>
       {/* Hero */}
       <div className="text-center mb-10">
         <div className="flex items-center justify-center mb-5">
