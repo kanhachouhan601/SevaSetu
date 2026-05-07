@@ -116,6 +116,18 @@ const inferSafetyReview = ({ problem = '', requirements = '', mode = 'temporary'
   };
 };
 
+const requiresAdminApprovalBeforeFemaleAssignment = (safetyReview = {}) => {
+  if (!safetyReview.required || safetyReview.approved) return false;
+  const reason = String(safetyReview.reason || '').toLowerCase();
+  const highRiskReasons = [
+    'patient has previous unsafe flag',
+    'night visit',
+    'safety-sensitive requirement',
+    'high dependency long-term case',
+  ];
+  return highRiskReasons.some(item => reason.includes(item));
+};
+
 const scoreNurseForRequest = (profile, { requiredSpecs, city, mode, patientLocation }) => {
   const nurseSpecs = profile.specializations || [];
   const specMatches = requiredSpecs.filter(spec => nurseSpecs.includes(spec)).length;
@@ -709,8 +721,7 @@ const updateRequestStatus = async (req, res) => {
       const claimingNurseProfile = await NurseProfile.findOne({ userId: req.user._id }).select('gender');
       if (
         claimingNurseProfile?.gender === 'female' &&
-        serviceRequest.safetyReview?.required &&
-        !serviceRequest.safetyReview?.approved
+        requiresAdminApprovalBeforeFemaleAssignment(serviceRequest.safetyReview)
       ) {
         const existingAlert = await SafetyAlert.exists({
           requestId: serviceRequest._id,
