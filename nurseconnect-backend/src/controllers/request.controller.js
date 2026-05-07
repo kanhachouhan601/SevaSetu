@@ -747,17 +747,11 @@ const updateRequestStatus = async (req, res) => {
         const nurseLocation = liveLocation || profileForEta?.currentLocation;
         const ride = estimateRide(nurseLocation, serviceRequest.rideTracking?.patientLocation);
         const eta = new Date(Date.now() + ride.minutes * 60 * 1000);
-        const existingRideTracking = serviceRequest.rideTracking?.toObject
-          ? serviceRequest.rideTracking.toObject()
-          : (serviceRequest.rideTracking || {});
         updates.arrivalEtaAt = eta;
-        updates.rideTracking = {
-          ...existingRideTracking,
-          estimatedDistanceKm: ride.distanceKm,
-          estimatedArrivalMinutes: ride.minutes,
-          nurseStartLocation: nurseLocation,
-          lastStatus: 'Nurse accepted and is on the way',
-        };
+        updates['rideTracking.estimatedDistanceKm'] = ride.distanceKm;
+        updates['rideTracking.estimatedArrivalMinutes'] = ride.minutes;
+        updates['rideTracking.lastStatus'] = 'Nurse accepted and is on the way';
+        if (nurseLocation) updates['rideTracking.nurseStartLocation'] = nurseLocation;
         if (liveLocation) {
           await NurseProfile.findOneAndUpdate(
             { userId: req.user._id },
@@ -830,7 +824,7 @@ const updateRequestStatus = async (req, res) => {
     res.json({ success: true, request: updated });
   } catch (error) {
     console.error('[Request UpdateStatus]', error);
-    res.status(500).json({ error: 'Failed to update request status.' });
+    res.status(500).json({ error: error.message || 'Failed to update request status.' });
   }
 };
 
