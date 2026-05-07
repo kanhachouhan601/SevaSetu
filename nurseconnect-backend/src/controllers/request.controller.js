@@ -747,9 +747,12 @@ const updateRequestStatus = async (req, res) => {
         const nurseLocation = liveLocation || profileForEta?.currentLocation;
         const ride = estimateRide(nurseLocation, serviceRequest.rideTracking?.patientLocation);
         const eta = new Date(Date.now() + ride.minutes * 60 * 1000);
+        const existingRideTracking = serviceRequest.rideTracking?.toObject
+          ? serviceRequest.rideTracking.toObject()
+          : (serviceRequest.rideTracking || {});
         updates.arrivalEtaAt = eta;
         updates.rideTracking = {
-          ...(serviceRequest.rideTracking || {}),
+          ...existingRideTracking,
           estimatedDistanceKm: ride.distanceKm,
           estimatedArrivalMinutes: ride.minutes,
           nurseStartLocation: nurseLocation,
