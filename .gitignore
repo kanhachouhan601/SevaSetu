@@ -1,0 +1,21 @@
+# Environment secrets
+.env
+.env.*
+!.env.example
+nurseconnect-backend/.env
+nurseconnect-frontend/.env
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Runtime uploads and local files
+uploads/
+nurseconnect-backend/uploads/
+
+# OS/editor files
+.DS_Store
+*.log
