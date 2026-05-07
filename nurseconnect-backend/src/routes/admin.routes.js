@@ -12,6 +12,8 @@ const {
   getSafetyAlerts,
   resolveSafetyAlert,
   approveRequestSafety,
+  approvePatientRequest,
+  rejectPatientRequest,
   verifyPatientAddress,
   clearPatientSafetyFlag,
 } = require('../controllers/admin.controller');
@@ -44,6 +46,10 @@ router.put('/patient/:id/safety-clear', clearPatientSafetyFlag);
 
 // GET /api/admin/requests
 router.get('/requests', getAllRequests);
+
+// Patient request approval queue
+router.put('/request/:id/approve', approvePatientRequest);
+router.put('/request/:id/reject', rejectPatientRequest);
 
 // GET /api/admin/activity
 router.get('/activity', getActivity);

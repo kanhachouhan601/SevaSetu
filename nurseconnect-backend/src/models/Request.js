@@ -20,8 +20,8 @@ const requestSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'matched', 'interview-scheduled', 'in-progress', 'completed', 'cancelled'],
-      default: 'pending',
+      enum: ['pending-admin', 'pending', 'matched', 'interview-scheduled', 'in-progress', 'completed', 'cancelled'],
+      default: 'pending-admin',
     },
     problem: {
       type: String,

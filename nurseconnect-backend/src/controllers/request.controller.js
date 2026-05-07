@@ -283,6 +283,7 @@ const createRequest = async (req, res) => {
 
     const serviceRequest = await Request.create({
       patientId: req.user._id,
+      status: 'pending-admin',
       mode,
       problem,
       address,
@@ -298,7 +299,7 @@ const createRequest = async (req, res) => {
       attachments,
       rideTracking: {
         patientLocation: normalizedPatientLocation,
-        lastStatus: mode === 'temporary' ? 'Looking for nearest available nurse' : undefined,
+        lastStatus: 'Waiting for admin approval',
       },
       visit: {
         checkInOtp: makeOtp(),
@@ -333,25 +334,16 @@ const createRequest = async (req, res) => {
     // Notify patient
     await Notification.create({
       userId: req.user._id,
-      message: matchResult.shortlisted.length
-        ? `Your ${mode === 'longterm' ? 'long-term' : 'temporary'} request is submitted. Estimated service amount: ₹${serviceAmount}. We shortlisted ${matchResult.shortlisted.length} qualified nurse(s).${safetyReview.required ? ' Safety review is enabled for this visit.' : ''}`
-        : `Your request is submitted, but no matching nurse is available right now. We will keep looking.`,
+      message: `Your ${mode === 'longterm' ? 'long-term' : 'temporary'} request is submitted for admin approval. Estimated service amount: ₹${serviceAmount}. Nurses will see it after verification.`,
       type: 'request_created',
       metadata: { requestId: serviceRequest._id },
     });
 
-    if (matchResult.shortlisted.length > 0) {
-      await Notification.insertMany(
-        matchResult.shortlisted.map(({ profile, score }) => ({
-          userId: profile.userId._id || profile.userId,
-          message: mode === 'longterm'
-            ? `Long-term patient request shortlisted for you. Estimated amount: ₹${serviceAmount}. If you accept, a 25-30 min AI video interview will be scheduled. Match score: ${Math.round(score)}.`
-            : `Temporary patient request matched for you. Estimated amount: ₹${serviceAmount}. Accept only if you can reach the patient soon. Match score: ${Math.round(score)}.`,
-          type: 'request_created',
-          metadata: { requestId: serviceRequest._id, matchScore: score, mode, amount: serviceAmount },
-        }))
-      );
-    }
+    await notifyAdmins({
+      message: `New patient request needs admin approval before nurses can accept it. Estimated amount: ₹${serviceAmount}.`,
+      requestId: serviceRequest._id,
+      type: 'request_created',
+    });
 
     const populated = await Request.findById(serviceRequest._id)
       .populate('patientId', 'name email phone')
@@ -671,7 +663,7 @@ const updateRequestStatus = async (req, res) => {
     const { id } = req.params;
     const { status, nurseId, amount, notes } = req.body;
 
-    const validStatuses = ['pending', 'matched', 'interview-scheduled', 'in-progress', 'completed', 'cancelled'];
+    const validStatuses = ['pending-admin', 'pending', 'matched', 'interview-scheduled', 'in-progress', 'completed', 'cancelled'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
     }

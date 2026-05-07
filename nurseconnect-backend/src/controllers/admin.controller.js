@@ -19,7 +19,7 @@ const getStats = async (req, res) => {
       User.countDocuments({ role: 'nurse' }),
       NurseProfile.countDocuments({ status: 'approved' }),
       User.countDocuments({ role: 'patient' }),
-      Request.countDocuments({ status: { $in: ['pending', 'matched', 'in-progress'] } }),
+      Request.countDocuments({ status: { $in: ['pending-admin', 'pending', 'matched', 'interview-scheduled', 'in-progress'] } }),
       NurseProfile.countDocuments({ status: 'pending' }),
       Request.find({ status: 'completed' }).select('amount'),
     ]);
@@ -34,6 +34,7 @@ const getStats = async (req, res) => {
         totalPatients,
         activeRequests,
         pendingApprovals,
+        pendingRequestApprovals: await Request.countDocuments({ status: 'pending-admin' }),
         totalRevenue,
         totalRequests: await Request.countDocuments(),
       },
@@ -334,6 +335,91 @@ const approveRequestSafety = async (req, res) => {
   }
 };
 
+const notifyShortlistedNursesForRequest = async (request) => {
+  const shortlist = request.shortlistedNurseIds || [];
+  if (!shortlist.length) return;
+
+  await Notification.insertMany(shortlist.map(nurseId => ({
+    userId: nurseId,
+    message: request.mode === 'longterm'
+      ? `Admin approved a long-term patient request for your review. Estimated amount: ₹${request.amount || 0}. Accept to schedule your AI interview.`
+      : `Admin approved a temporary patient request for your review. Estimated amount: ₹${request.amount || 0}. Accept only if you can reach the patient soon.`,
+    type: 'request_created',
+    metadata: {
+      requestId: request._id,
+      mode: request.mode,
+      amount: request.amount,
+      matchScore: request.matchingScores?.[String(nurseId)],
+    },
+  })));
+};
+
+const approvePatientRequest = async (req, res) => {
+  try {
+    const request = await Request.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: 'Request not found.' });
+    if (request.status !== 'pending-admin') {
+      return res.status(400).json({ error: 'Only requests waiting for admin approval can be approved.' });
+    }
+
+    request.status = 'pending';
+    request.set('rideTracking.lastStatus', request.mode === 'temporary'
+      ? 'Approved by admin. Waiting for nurse acceptance.'
+      : 'Approved by admin. Waiting for nurse interview acceptance.'
+    );
+    await request.save();
+
+    await Notification.create({
+      userId: request.patientId,
+      message: 'Admin approved your request. We are now sharing it with verified nurses.',
+      type: 'request_created',
+      metadata: { requestId: request._id },
+    });
+
+    await notifyShortlistedNursesForRequest(request);
+
+    const populated = await Request.findById(request._id)
+      .populate('patientId', 'name email phone')
+      .populate('nurseId', 'name email phone');
+
+    res.json({ success: true, request: populated, message: 'Request approved and shared with shortlisted nurses.' });
+  } catch (error) {
+    console.error('[Admin ApprovePatientRequest]', error);
+    res.status(500).json({ error: 'Failed to approve request.' });
+  }
+};
+
+const rejectPatientRequest = async (req, res) => {
+  try {
+    const request = await Request.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: 'Request not found.' });
+    if (request.status !== 'pending-admin') {
+      return res.status(400).json({ error: 'Only requests waiting for admin approval can be rejected.' });
+    }
+
+    const reason = req.body.reason || 'Request could not be verified by admin.';
+    request.status = 'cancelled';
+    request.notes = `${request.notes || ''}\nAdmin rejected request: ${reason}`.trim();
+    await request.save();
+
+    await Notification.create({
+      userId: request.patientId,
+      message: `Admin could not approve your request. Reason: ${reason}`,
+      type: 'request_cancelled',
+      metadata: { requestId: request._id },
+    });
+
+    const populated = await Request.findById(request._id)
+      .populate('patientId', 'name email phone')
+      .populate('nurseId', 'name email phone');
+
+    res.json({ success: true, request: populated, message: 'Request rejected.' });
+  } catch (error) {
+    console.error('[Admin RejectPatientRequest]', error);
+    res.status(500).json({ error: 'Failed to reject request.' });
+  }
+};
+
 const verifyPatientAddress = async (req, res) => {
   try {
     const patient = await User.findOneAndUpdate(
@@ -382,6 +468,8 @@ module.exports = {
   getSafetyAlerts,
   resolveSafetyAlert,
   approveRequestSafety,
+  approvePatientRequest,
+  rejectPatientRequest,
   verifyPatientAddress,
   clearPatientSafetyFlag,
 };
