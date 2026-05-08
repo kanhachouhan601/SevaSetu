@@ -7,6 +7,7 @@ const CameraFeed = forwardRef(function CameraFeed({
   modelsReady,
   nurseName,
   onStartSetup,
+  setupMode = false,
 }, videoRef) {
   const faceLabel = {
     idle: "Waiting",
@@ -18,7 +19,7 @@ const CameraFeed = forwardRef(function CameraFeed({
   }[faceState] || "Checking";
 
   return (
-    <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+    <section className={`h-full rounded-2xl border border-gray-100 bg-white shadow-sm ${setupMode ? "p-4" : "p-5"}`}>
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <p className="font-bold text-gray-950">Nurse Camera</p>
@@ -34,7 +35,7 @@ const CameraFeed = forwardRef(function CameraFeed({
         </div>
       </div>
 
-      <div className="relative aspect-video overflow-hidden rounded-xl bg-gray-950">
+      <div className={`relative overflow-hidden rounded-xl bg-gray-950 ${setupMode ? "aspect-[4/3]" : "aspect-video"}`}>
         <video ref={videoRef} autoPlay playsInline muted className="h-full w-full scale-x-[-1] object-cover" />
         {!ready && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-950 text-sm text-white/70">
@@ -52,13 +53,15 @@ const CameraFeed = forwardRef(function CameraFeed({
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={onStartSetup}
-        className="mt-3 w-full rounded-xl bg-teal-600 px-4 py-3 text-sm font-bold text-white hover:bg-teal-700"
-      >
-        {ready && micReady ? "Restart Camera + Mic Check" : "Allow Camera + Mic"}
-      </button>
+      {onStartSetup && (
+        <button
+          type="button"
+          onClick={onStartSetup}
+          className="mt-3 w-full rounded-xl bg-teal-600 px-4 py-3 text-sm font-bold text-white hover:bg-teal-700"
+        >
+          {ready && micReady ? "Restart Camera + Mic Check" : "Allow Camera + Mic"}
+        </button>
+      )}
     </section>
   );
 });

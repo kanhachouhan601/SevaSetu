@@ -10,6 +10,8 @@ export default function InterviewControls({
   onMuteToggle,
   onEnd,
   onVolumeChange,
+  answerReady,
+  onSubmitAnswer,
 }) {
   return (
     <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
@@ -25,6 +27,14 @@ export default function InterviewControls({
           </button>
         ) : (
           <>
+            <button
+              type="button"
+              onClick={onSubmitAnswer}
+              disabled={!answerReady || paused}
+              className="rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Submit Answer
+            </button>
             <button type="button" onClick={onPauseToggle} className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">
               {paused ? "Resume" : "Pause"}
             </button>
