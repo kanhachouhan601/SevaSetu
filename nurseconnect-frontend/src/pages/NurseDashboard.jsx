@@ -4,6 +4,7 @@ import axios from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import LanguageSelector from "../components/LanguageSelector";
+import VoiceInputButton from "../components/VoiceInputButton";
 
 // ── Icons ────────────────────────────────────────────────────
 const HeartIcon = () => (
@@ -38,6 +39,7 @@ const MapPinIcon = () => (
 );
 
 const REQ_STATUS = {
+  "pending-admin": "bg-purple-50 text-purple-700 border border-purple-200",
   pending: "bg-amber-50 text-amber-700 border border-amber-200",
   matched: "bg-sky-50 text-sky-700 border border-sky-200",
   "interview-scheduled": "bg-purple-50 text-purple-700 border border-purple-200",
@@ -46,7 +48,7 @@ const REQ_STATUS = {
   cancelled: "bg-red-50 text-red-600 border border-red-200",
 };
 function StatusBadge({ status }) {
-  const emojis = { pending: "⏳", matched: "🔗", "interview-scheduled": "🎥", "in-progress": "🚀", completed: "✅", cancelled: "❌" };
+  const emojis = { "pending-admin": "🛡️", pending: "⏳", matched: "🔗", "interview-scheduled": "🎥", "in-progress": "🚀", completed: "✅", cancelled: "❌" };
   return (
     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${REQ_STATUS[status] || "bg-gray-100 text-gray-600 border border-gray-200"}`}>
       {emojis[status] || ""} {status?.replace("-", " ")}
@@ -150,6 +152,7 @@ export default function NurseDashboard() {
   const [safetyMessage, setSafetyMessage] = useState("");
   const [locationMessage, setLocationMessage] = useState("");
   const [reportDrafts, setReportDrafts] = useState({});
+  const [reportVoiceError, setReportVoiceError] = useState("");
 
   useEffect(() => {
     fetchNurseProfile();
@@ -231,12 +234,13 @@ export default function NurseDashboard() {
   }
 
   async function updateRequestStatus(id, status) {
+    setSafetyMessage("");
     try {
       await axios.put(`/api/request/${id}/status`, { status });
       fetchRequests();
       fetchJobs();
     } catch (err) {
-      console.error("Status update failed:", err?.response?.data?.error);
+      setSafetyMessage(err?.response?.data?.error || "Status update failed.");
     }
   }
 
@@ -321,6 +325,7 @@ export default function NurseDashboard() {
   }
 
   async function applyForRequest(id) {
+    setSafetyMessage("");
     setApplyingId(id);
     try {
       const location = await getBrowserLocation();
@@ -773,6 +778,21 @@ export default function NurseDashboard() {
                             placeholder="Family behavior, safety concern, payment issue..."
                             className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs resize-none"
                           />
+                          <div className="flex flex-wrap items-center gap-2">
+                            <VoiceInputButton
+                              value={(reportDrafts[req._id || req.id] || {}).comment || ""}
+                              onChange={text => updateReportDraft(req._id || req.id, { comment: text })}
+                              label="Speak report"
+                              idleClassName="border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                              onError={setReportVoiceError}
+                            />
+                            <span className="text-[11px] text-gray-500">Hindi/Hinglish voice supported</span>
+                          </div>
+                          {reportVoiceError && (
+                            <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600">
+                              {reportVoiceError}
+                            </p>
+                          )}
                           <button
                             type="button"
                             onClick={() => submitPatientReport(req._id || req.id)}

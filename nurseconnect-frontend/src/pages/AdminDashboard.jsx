@@ -94,13 +94,14 @@ function NurseBadge({ status }) {
 
 function ReqBadge({ status }) {
   const map = {
+    "pending-admin": "bg-purple-100 text-purple-700",
     pending: "bg-amber-100 text-amber-700",
     matched: "bg-blue-100 text-blue-700",
     "in-progress": "bg-sky-100 text-sky-700",
     completed: "bg-emerald-100 text-emerald-700",
     cancelled: "bg-red-100 text-red-700",
   };
-  const emojis = { pending: "⏳", matched: "🔗", "in-progress": "🚀", completed: "✅", cancelled: "❌" };
+  const emojis = { "pending-admin": "🛡️", pending: "⏳", matched: "🔗", "in-progress": "🚀", completed: "✅", cancelled: "❌" };
   return <span className={`text-xs px-2 py-0.5 rounded-full border border-transparent ${map[status] || "bg-gray-100 text-gray-600"}`}>{emojis[status]} {status?.replace("-", " ")}</span>;
 }
 
@@ -286,6 +287,26 @@ export default function AdminDashboard() {
       setRequests(mapped);
     } catch { setRequests([]); }
     finally { setLoadingRequests(false); }
+  }
+
+  async function approvePatientRequest(id) {
+    try {
+      await axios.put(`/api/admin/request/${id}/approve`);
+      await Promise.all([fetchRequests(), fetchStats()]);
+    } catch (err) {
+      console.error("Approve request failed:", err?.response?.data?.error);
+    }
+  }
+
+  async function rejectPatientRequest(id) {
+    const reason = window.prompt("Reject reason", "Request could not be verified by admin.");
+    if (reason === null) return;
+    try {
+      await axios.put(`/api/admin/request/${id}/reject`, { reason });
+      await Promise.all([fetchRequests(), fetchStats()]);
+    } catch (err) {
+      console.error("Reject request failed:", err?.response?.data?.error);
+    }
   }
 
   async function fetchSafetyAlerts() {
@@ -772,16 +793,16 @@ export default function AdminDashboard() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-100">
-                        {["Request ID", "Patient", "Nurse", "Mode", "Status", "Problem", "Amount"].map(col => (
+                        {["Request ID", "Patient", "Nurse", "Mode", "Status", "Problem", "Amount", "Action"].map(col => (
                           <th key={col} className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 whitespace-nowrap">{col}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {loadingRequests ? (
-                        <tr><td colSpan={7} className="text-center py-10 text-gray-300">Loading requests…</td></tr>
+                        <tr><td colSpan={8} className="text-center py-10 text-gray-300">Loading requests…</td></tr>
                       ) : requests.length === 0 ? (
-                        <tr><td colSpan={7} className="text-center py-10 text-gray-300">No requests found</td></tr>
+                        <tr><td colSpan={8} className="text-center py-10 text-gray-300">No requests found</td></tr>
                       ) : requests.map(req => (
                         <tr key={req._id || req.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                           <td className="px-4 py-3 font-mono text-xs text-gray-400 whitespace-nowrap">{(req._id || req.id || "").toString().slice(-8)}</td>
@@ -797,6 +818,26 @@ export default function AdminDashboard() {
                           <td className="px-4 py-3 text-gray-600 max-w-[180px] truncate">{req.problem || "—"}</td>
                           <td className="px-4 py-3 text-emerald-700 font-semibold whitespace-nowrap">
                             {req.amount ? `₹${Number(req.amount).toLocaleString()}` : "—"}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {req.status === "pending-admin" ? (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => approvePatientRequest(req._id || req.id)}
+                                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => rejectPatientRequest(req._id || req.id)}
+                                  className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-300">—</span>
+                            )}
                           </td>
                         </tr>
                       ))}

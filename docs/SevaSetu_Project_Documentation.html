@@ -1,0 +1,281 @@
+<!doctype html><html><head><meta charset="utf-8"><title>SevaSetu Project Documentation</title><style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    line-height: 1.5;
+    color: #172033;
+    margin: 42px;
+    max-width: 920px;
+  }
+  h1 {
+    font-size: 30px;
+    border-bottom: 3px solid #0ea5e9;
+    padding-bottom: 10px;
+  }
+  h2 {
+    font-size: 22px;
+    margin-top: 34px;
+    border-bottom: 1px solid #d7dee8;
+    padding-bottom: 6px;
+  }
+  h3 {
+    font-size: 17px;
+    margin-top: 22px;
+    color: #0f766e;
+  }
+  pre {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 14px;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  code {
+    font-family: SFMono-Regular, Consolas, monospace;
+    font-size: 12px;
+  }
+  p, li {
+    font-size: 13px;
+  }
+  ul, ol {
+    margin-top: 4px;
+    margin-bottom: 8px;
+  }
+  @media print {
+    body { margin: 28px; }
+    h2 { page-break-after: avoid; }
+    pre { page-break-inside: avoid; }
+  }
+</style></head><body><h1>SevaSetu Project Documentation</h1><br><p>Version: 1.0  </p><p>Frontend live URL: https://sevasetu-frontend.vercel.app  </p><p>Backend live URL: https://sevasetu-ebtq.onrender.com  </p><p>Backend health check: https://sevasetu-ebtq.onrender.com/api/health  </p><p>GitHub repo: https://github.com/kanhachouhan601/SevaSetu</p><br><h2>1. Project Overview</h2><br><p>SevaSetu is a home nursing platform MVP with three user roles:</p><br><ul><li>Patient: books a nurse, tracks status, shares OTPs, rates completed care.</li><li>Nurse: registers with documents, accepts requests, checks in/out, raises SOS, reports unsafe patient behavior, sees earnings.</li><li>Admin: approves/rejects nurses, reviews patients/requests, handles safety alerts, verifies patient addresses.</li></ul><br><p>This project is deployed as:</p><br><ul><li>Frontend: React + Vite on Vercel.</li><li>Backend: Node.js + Express on Render.</li><li>Database: MongoDB Atlas.</li><li>AI provider: Gemini/OpenAI/Groq compatible backend service, currently configured through environment variables.</li></ul><br><h2>2. Repository Structure</h2><br><pre><code>SevaSetu/
+  nurseconnect-frontend/
+    src/
+      api/axios.js
+      components/LanguageSelector.jsx
+      context/AuthContext.jsx
+      context/LanguageContext.jsx
+      pages/
+        PatientDashboard.jsx
+        NurseDashboard.jsx
+        AdminDashboard.jsx
+        Login.jsx
+        Register.jsx
+        HomePage.jsx
+        NurseInterview.jsx
+    vercel.json
+    package.json
+
+  nurseconnect-backend/
+    src/
+      config/db.js
+      controllers/
+      middleware/
+      models/
+      routes/
+      services/aiProvider.service.js
+    render.yaml
+    server.js
+    package.json
+
+  .gitignore
+  docs/
+</code></pre><br><h2>3. Connectivity Summary</h2><br><h3>Frontend to Backend</h3><br><p>Frontend API client:</p><br><pre><code>nurseconnect-frontend/src/api/axios.js
+</code></pre><br><p>It reads:</p><br><pre><code>VITE_API_URL
+</code></pre><br><p>Production value:</p><br><pre><code>https://sevasetu-ebtq.onrender.com
+</code></pre><br><p>If `VITE_API_URL` is missing, frontend falls back to:</p><br><pre><code>http://localhost:3000
+</code></pre><br><h3>Backend to MongoDB</h3><br><p>Backend DB config:</p><br><pre><code>nurseconnect-backend/src/config/db.js
+</code></pre><br><p>It reads:</p><br><pre><code>MONGODB_URI
+</code></pre><br><p>This is stored only in Render environment variables. Do not commit it.</p><br><h3>CORS</h3><br><p>Backend CORS uses:</p><br><pre><code>FRONTEND_URL
+</code></pre><br><p>Production value:</p><br><pre><code>https://sevasetu-frontend.vercel.app
+</code></pre><br><p>This allows the Vercel frontend to call the Render backend.</p><br><h2>4. Environment Variables</h2><br><h3>Backend Render Variables</h3><br><pre><code>MONGODB_URI=&lt;MongoDB Atlas connection string&gt;
+JWT_SECRET=&lt;long random secret&gt;
+FRONTEND_URL=https://sevasetu-frontend.vercel.app
+AI_PROVIDER=gemini
+GEMINI_API_KEY=&lt;Gemini API key&gt;
+</code></pre><br><p>Optional:</p><br><pre><code>GEMINI_MODEL=gemini-2.0-flash
+OPENAI_API_KEY=&lt;OpenAI key&gt;
+OPENAI_MODEL=gpt-4o-mini
+GROQ_API_KEY=&lt;Groq key&gt;
+GROQ_MODEL=&lt;Groq model&gt;
+GMAIL_USER=&lt;Gmail address&gt;
+GMAIL_PASS=&lt;Gmail app password&gt;
+LONGTERM_INTERVIEW_DELAY_MINUTES=60
+</code></pre><br><h3>Frontend Vercel Variables</h3><br><pre><code>VITE_API_URL=https://sevasetu-ebtq.onrender.com
+</code></pre><br><p>Note: `VITE_` variables are visible in browser bundles. This is safe for a public backend URL, but not safe for secrets.</p><br><h2>5. Security and Git Safety</h2><br><p>The root `.gitignore` protects:</p><br><pre><code>.env
+.env.*
+nurseconnect-backend/.env
+nurseconnect-frontend/.env
+node_modules/
+dist/
+uploads/
+.DS_Store
+*.log
+</code></pre><br><p>Never push:</p><br><ul><li>MongoDB URI</li><li>JWT secret</li><li>Gemini/OpenAI/Groq keys</li><li>Gmail app password</li><li>`.env` files</li></ul><br><p>Before pushing, check:</p><br><pre><code>git status
+</code></pre><br><p>If `.env` appears in `git status`, stop and fix `.gitignore`.</p><br><h2>6. Main Features</h2><br><h3>6.1 Authentication and Roles</h3><br><p>Users can login/register and are redirected by role:</p><br><ul><li>Patient -&gt; `/patient`</li><li>Nurse -&gt; `/nurse`</li><li>Admin -&gt; `/admin`</li></ul><br><p>Important files:</p><br><pre><code>nurseconnect-frontend/src/context/AuthContext.jsx
+nurseconnect-backend/src/controllers/auth.controller.js
+nurseconnect-backend/src/middleware/auth.middleware.js
+nurseconnect-backend/src/middleware/role.middleware.js
+</code></pre><br><p>Test flow:</p><br><ol><li>Open frontend.</li><li>Register/login as patient.</li><li>Confirm patient dashboard opens.</li><li>Register/login as nurse.</li><li>Confirm nurse dashboard opens.</li><li>Login as admin.</li><li>Confirm admin dashboard opens.</li></ol><br><p>Expected result: each role opens only its allowed dashboard.</p><br><h3>6.2 Patient Booking</h3><br><p>Patient can submit a home nursing request with:</p><br><ul><li>Problem</li><li>Requirements</li><li>Temporary/long-term mode</li><li>Address</li><li>Optional current location for temporary visits</li><li>Optional medical files/photos</li></ul><br><p>Important files:</p><br><pre><code>nurseconnect-frontend/src/pages/PatientDashboard.jsx
+nurseconnect-backend/src/controllers/request.controller.js
+nurseconnect-backend/src/models/Request.js
+</code></pre><br><p>Test flow:</p><br><ol><li>Login as patient.</li><li>Fill "Book a Nurse".</li><li>Use sample problem: `Injection and BP monitoring needed`.</li><li>Select Temporary.</li><li>Enter address.</li><li>Submit request.</li><li>Check "My Requests".</li></ol><br><p>Expected result:</p><br><ul><li>Request appears in "My Requests".</li><li>Amount appears, for example `₹650`.</li><li>Status is pending or matched depending on nurse actions.</li></ul><br><h3>6.3 Auto Amount Estimate</h3><br><p>Amount is automatically calculated by backend. Patient does not type amount.</p><br><p>Current simple rules:</p><br><ul><li>Temporary base: `₹500`</li><li>Long-term base: `₹1200`</li><li>Extra for ICU/emergency/night/wound/injection/monitoring keywords.</li><li>Temporary max cap: `₹1500`</li><li>Long-term max cap: `₹2500`</li></ul><br><p>Important file:</p><br><pre><code>nurseconnect-backend/src/controllers/request.controller.js
+</code></pre><br><p>Test flow:</p><br><ol><li>Create a request with `Injection and BP monitoring needed`.</li><li>Check patient request card.</li><li>Check nurse open request card.</li></ol><br><p>Expected result: same estimated amount appears for patient and nurse.</p><br><h3>6.4 Nurse Matching and Accept Flow</h3><br><p>Backend shortlists approved and available nurses based on:</p><br><ul><li>Specialization</li><li>Experience</li><li>Interview score</li><li>Rating</li><li>Documents</li><li>City/location</li></ul><br><p>Temporary requests prefer nearest nurse if location is available.</p><br><p>Test flow:</p><br><ol><li>Admin approves nurse profile.</li><li>Nurse goes online.</li><li>Patient creates request.</li><li>Nurse opens "Open Requests".</li><li>Nurse accepts request.</li></ol><br><p>Expected result:</p><br><ul><li>Request moves to nurse "Assigned Requests".</li><li>Patient sees assigned nurse and ETA where available.</li></ul><br><h3>6.5 Temporary ETA and Location</h3><br><p>When nurse accepts a temporary request, backend estimates:</p><br><ul><li>Distance</li><li>Arrival minutes</li><li>ETA time</li></ul><br><p>Important fields:</p><br><pre><code>rideTracking.estimatedDistanceKm
+rideTracking.estimatedArrivalMinutes
+arrivalEtaAt
+</code></pre><br><p>Test flow:</p><br><ol><li>Patient uses current location while booking.</li><li>Nurse updates current location.</li><li>Nurse accepts temporary request.</li></ol><br><p>Expected result:</p><br><ul><li>Patient sees "Nurse is on the way".</li><li>ETA is shown.</li></ul><br><h3>6.6 Long-Term AI Interview</h3><br><p>Long-term flow schedules a 25-30 minute AI clinical interview for nurse before final assignment.</p><br><p>Important files:</p><br><pre><code>nurseconnect-frontend/src/pages/NurseInterview.jsx
+nurseconnect-backend/src/controllers/request.controller.js
+nurseconnect-backend/src/services/aiProvider.service.js
+</code></pre><br><p>Test flow:</p><br><ol><li>Patient creates long-term request.</li><li>Nurse accepts request.</li><li>Nurse sees scheduled interview.</li><li>Nurse opens interview at scheduled time.</li><li>Nurse answers questions.</li><li>AI scores interview.</li></ol><br><p>Expected result:</p><br><ul><li>If passed, request moves to matched.</li><li>If failed, nurse is removed and next shortlisted nurse can be notified.</li></ul><br><h3>6.7 OTP Check-In and Check-Out</h3><br><p>Patient dashboard shows:</p><br><ul><li>Check-in OTP</li><li>Check-out OTP</li></ul><br><p>Nurse uses these OTPs to start and complete visit.</p><br><p>Important endpoints:</p><br><pre><code>POST /api/request/:id/visit/check-in
+POST /api/request/:id/visit/check-out
+</code></pre><br><p>Test flow:</p><br><ol><li>Nurse accepts request.</li><li>Patient gives check-in OTP.</li><li>Nurse enters OTP and clicks Check-in.</li><li>Request becomes in-progress.</li><li>Patient gives check-out OTP.</li><li>Nurse enters OTP and clicks Check-out.</li><li>Request becomes completed.</li></ol><br><p>Expected result:</p><br><ul><li>Check-in starts visit.</li><li>Check-out completes visit.</li><li>Patient can rate nurse.</li><li>Nurse earnings increase by request amount.</li></ul><br><h3>6.8 Nurse Earnings</h3><br><p>When request is completed through OTP check-out, backend increments nurse earnings.</p><br><p>Important file:</p><br><pre><code>nurseconnect-backend/src/controllers/request.controller.js
+</code></pre><br><p>Test flow:</p><br><ol><li>Create request with amount shown, for example `₹650`.</li><li>Nurse completes check-in/check-out.</li><li>Refresh nurse dashboard/profile.</li></ol><br><p>Expected result: nurse earnings increase by `₹650`.</p><br><h3>6.9 Patient Rating</h3><br><p>After request is completed, patient can rate nurse:</p><br><ul><li>1-5 stars</li><li>Behavior</li><li>Care quality</li><li>Comment</li></ul><br><p>Important endpoint:</p><br><pre><code>POST /api/request/:id/rating
+</code></pre><br><p>Test flow:</p><br><ol><li>Complete a visit.</li><li>Patient opens completed request.</li><li>Select rating and submit.</li></ol><br><p>Expected result:</p><br><ul><li>Rating is saved.</li><li>Nurse profile average rating updates.</li></ul><br><h3>6.10 Safety Review</h3><br><p>Backend marks request for safety review if:</p><br><ul><li>Patient has unsafe flag</li><li>Night visit</li><li>Safety-sensitive requirement</li><li>High-dependency long-term case</li><li>Address not verified</li></ul><br><p>Admin can approve safety review.</p><br><p>Important files:</p><br><pre><code>nurseconnect-backend/src/models/SafetyAlert.js
+nurseconnect-backend/src/controllers/request.controller.js
+nurseconnect-backend/src/controllers/admin.controller.js
+nurseconnect-frontend/src/pages/AdminDashboard.jsx
+</code></pre><br><p>Test flow:</p><br><ol><li>Create request with unverified address or night/sensitive words.</li><li>Admin opens Safety tab.</li><li>Admin approves safety.</li><li>Patient/nurse see approved status.</li></ol><br><p>Expected result: safety review alert appears and can be approved.</p><br><h3>6.11 Emergency SOS</h3><br><p>Nurse can raise emergency SOS from matched/in-progress request.</p><br><p>Endpoint:</p><br><pre><code>POST /api/request/:id/safety/sos
+</code></pre><br><p>Test flow:</p><br><ol><li>Nurse opens assigned request.</li><li>Click Emergency SOS.</li><li>Confirm prompt.</li><li>Admin opens safety panel.</li></ol><br><p>Expected result:</p><br><ul><li>Critical alert is created.</li><li>Admin receives notification.</li><li>Patient receives safety notification.</li></ul><br><h3>6.12 Patient Behavior Report</h3><br><p>After completion, nurse can submit patient/family behavior report:</p><br><ul><li>Respectful/rude/harassment concern</li><li>Safe/unsafe environment</li><li>Payment issue</li><li>Unsafe flag</li><li>Comment</li></ul><br><p>If unsafe, patient safety flag is updated.</p><br><p>Endpoint:</p><br><pre><code>POST /api/request/:id/safety/patient-report
+</code></pre><br><p>Test flow:</p><br><ol><li>Complete visit.</li><li>Nurse opens completed request.</li><li>Submit behavior report.</li><li>If unsafe is selected, admin checks safety panel/patient table.</li></ol><br><p>Expected result: unsafe patient flag and alert appear.</p><br><h3>6.13 AI Health Assistant with Mic</h3><br><p>Patient dashboard has floating AI Health Assistant.</p><br><p>Features:</p><br><ul><li>Chat with AI health companion.</li><li>Mic button converts speech to input text.</li><li>User still controls send button.</li><li>Send stops mic automatically.</li></ul><br><p>Important file:</p><br><pre><code>nurseconnect-frontend/src/pages/PatientDashboard.jsx
+</code></pre><br><p>Test flow:</p><br><ol><li>Patient opens dashboard.</li><li>Click AI Health Assistant.</li><li>Click mic button.</li><li>Speak in Hindi/Hinglish.</li><li>Confirm text appears in input.</li><li>Click send.</li></ol><br><p>Expected result: assistant replies.</p><br><h3>6.14 Language Dropdown</h3><br><p>Languages currently available:</p><br><ul><li>English</li><li>Hindi</li><li>Hinglish</li></ul><br><p>Selector appears on:</p><br><ul><li>Login</li><li>Register</li><li>Home</li><li>Patient dashboard</li><li>Nurse dashboard</li></ul><br><p>Preference is saved in localStorage.</p><br><p>Important files:</p><br><pre><code>nurseconnect-frontend/src/context/LanguageContext.jsx
+nurseconnect-frontend/src/components/LanguageSelector.jsx
+</code></pre><br><p>Test flow:</p><br><ol><li>Open login page.</li><li>Select Hindi.</li><li>Navigate to patient/nurse dashboard.</li><li>Refresh page.</li></ol><br><p>Expected result:</p><br><ul><li>Selected language stays after refresh.</li><li>Main labels and next-step messages change.</li></ul><br><h3>6.15 Notifications</h3><br><p>Notifications exist for:</p><br><ul><li>Request created</li><li>Request matched</li><li>Request completed</li><li>Safety/SOS alerts</li><li>Nurse approved/rejected</li><li>System messages</li></ul><br><p>Frontend polls notifications every 15 seconds.</p><br><p>Important files:</p><br><pre><code>nurseconnect-backend/src/models/Notification.js
+nurseconnect-backend/src/controllers/notification.controller.js
+nurseconnect-frontend/src/pages/PatientDashboard.jsx
+nurseconnect-frontend/src/pages/NurseDashboard.jsx
+</code></pre><br><p>Test flow:</p><br><ol><li>Patient creates request.</li><li>Nurse receives notification.</li><li>Nurse accepts request.</li><li>Patient receives notification.</li></ol><br><p>Expected result: bell count updates and dropdown shows messages.</p><br><h3>6.16 Admin Dashboard</h3><br><p>Admin can:</p><br><ul><li>View stats</li><li>Approve/reject nurses</li><li>View patients</li><li>Verify patient address</li><li>Clear unsafe patient flag</li><li>View requests</li><li>Review safety alerts</li><li>Approve safety review</li><li>Resolve safety alerts</li></ul><br><p>Important file:</p><br><pre><code>nurseconnect-frontend/src/pages/AdminDashboard.jsx
+</code></pre><br><p>Test flow:</p><br><ol><li>Login as admin.</li><li>Open Nurses tab.</li><li>Approve pending nurse.</li><li>Open Patients tab.</li><li>Verify address.</li><li>Open Safety tab.</li><li>Resolve/approve alert.</li></ol><br><p>Expected result: admin actions update data and notifications.</p><br><h2>7. Deployment Documentation</h2><br><h3>7.1 GitHub Setup</h3><br><p>Commands used:</p><br><pre><code>echo "# SevaSetu" &gt;&gt; README.md
+git init
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/kanhachouhan601/SevaSetu.git
+git push -u origin main
+</code></pre><br><p>After `.gitignore` was added and project files were safe:</p><br><pre><code>git add .
+git commit -m "Add SevaSetu app source"
+git push origin main
+</code></pre><br><p>Later commits:</p><br><pre><code>git add nurseconnect-frontend/.gitignore
+git commit -m "Ignore Vercel local config"
+git push origin main
+
+git add nurseconnect-frontend/src
+git commit -m "Add language selector"
+git push origin main
+</code></pre><br><h3>7.2 MongoDB Atlas Setup</h3><br><p>Steps:</p><br><ol><li>Create MongoDB Atlas account.</li><li>Create free M0 cluster.</li><li>Create database user.</li><li>Allow network access:</li></ol><br><pre><code>0.0.0.0/0
+</code></pre><br><ol><li>Copy driver connection string.</li><li>Replace password in URI.</li><li>Paste URI in Render env variable:</li></ol><br><pre><code>MONGODB_URI
+</code></pre><br><p>Do not paste Mongo URI in chat or GitHub.</p><br><h3>7.3 Render Backend Deploy</h3><br><p>Render service settings:</p><br><pre><code>Service Type: Web Service
+Repo: kanhachouhan601/SevaSetu
+Branch: main
+Root Directory: nurseconnect-backend
+Runtime: Node
+Build Command: npm install
+Start Command: npm start
+Plan: Free
+</code></pre><br><p>Environment variables:</p><br><pre><code>MONGODB_URI=&lt;secret&gt;
+JWT_SECRET=&lt;secret&gt;
+AI_PROVIDER=gemini
+GEMINI_API_KEY=&lt;secret&gt;
+FRONTEND_URL=https://sevasetu-frontend.vercel.app
+</code></pre><br><p>After changing env variables, choose:</p><br><pre><code>Save, rebuild and deploy
+</code></pre><br><p>Backend health check:</p><br><pre><code>https://sevasetu-ebtq.onrender.com/api/health
+</code></pre><br><p>Expected:</p><br><pre><code>{
+  "status": "ok"
+}
+</code></pre><br><h3>7.4 Vercel Frontend Deploy</h3><br><p>Vercel project linked with:</p><br><pre><code>cd /Users/apple/Documents/SevaSetu/nurseconnect-frontend
+vercel link
+</code></pre><br><p>Production API env added:</p><br><pre><code>vercel env add VITE_API_URL production
+</code></pre><br><p>Value:</p><br><pre><code>https://sevasetu-ebtq.onrender.com
+</code></pre><br><p>Manual production deploy:</p><br><pre><code>vercel --prod
+</code></pre><br><p>Live frontend:</p><br><pre><code>https://sevasetu-frontend.vercel.app
+</code></pre><br><p>If GitHub auto deploy does not update frontend, run:</p><br><pre><code>cd /Users/apple/Documents/SevaSetu/nurseconnect-frontend
+vercel --prod
+</code></pre><br><p>Then hard refresh:</p><br><pre><code>Mac: Cmd + Shift + R
+Windows: Ctrl + Shift + R
+</code></pre><br><h2>8. Commands Used During Development</h2><br><h3>Check project files</h3><br><pre><code>rg --files
+rg -n "safety|SOS|OTP|amount"
+sed -n '1,260p' file
+git status --short
+</code></pre><br><h3>Frontend build check</h3><br><pre><code>cd /Users/apple/Documents/SevaSetu/nurseconnect-frontend
+npm run build
+</code></pre><br><h3>Backend syntax checks</h3><br><pre><code>cd /Users/apple/Documents/SevaSetu/nurseconnect-backend
+node --check src/controllers/request.controller.js
+node --check src/controllers/admin.controller.js
+</code></pre><br><h3>Dev server commands</h3><br><p>Frontend:</p><br><pre><code>cd nurseconnect-frontend
+npm run dev
+</code></pre><br><p>Backend:</p><br><pre><code>cd nurseconnect-backend
+npm run dev
+</code></pre><br><p>Note: local sandbox blocked port binding during this session. On your normal terminal, these commands should work.</p><br><h3>Git update commands</h3><br><p>Normal future update:</p><br><pre><code>cd /Users/apple/Documents/SevaSetu
+git status
+git add .
+git commit -m "update"
+git push origin main
+</code></pre><br><h3>Vercel status and manual deploy</h3><br><pre><code>cd /Users/apple/Documents/SevaSetu/nurseconnect-frontend
+vercel ls sevasetu-frontend
+vercel --prod
+</code></pre><br><h3>Vercel env</h3><br><pre><code>vercel env add VITE_API_URL production
+vercel env ls
+</code></pre><br><h2>9. Future Update Process</h2><br><p>For normal code changes:</p><br><ol><li>Edit code locally.</li><li>Run checks.</li><li>Commit and push.</li></ol><br><pre><code>git add .
+git commit -m "update"
+git push origin main
+</code></pre><br><p>Expected:</p><br><ul><li>Render redeploys backend if backend changed.</li><li>Vercel redeploys frontend if configured to auto deploy.</li></ul><br><p>If Vercel does not update:</p><br><pre><code>cd nurseconnect-frontend
+vercel --prod
+</code></pre><br><p>If Render does not update:</p><br><ol><li>Open Render service.</li><li>Click Manual Deploy.</li><li>Select latest commit.</li></ol><br><h2>10. Common Errors and Fixes</h2><br><h3>CORS error in browser</h3><br><p>Cause: backend `FRONTEND_URL` does not match frontend URL.</p><br><p>Fix:</p><br><ol><li>Render -&gt; backend service -&gt; Environment.</li><li>Set:</li></ol><br><pre><code>FRONTEND_URL=https://sevasetu-frontend.vercel.app
+</code></pre><br><ol><li>Save, rebuild and deploy.</li></ol><br><h3>Frontend calls localhost after deployment</h3><br><p>Cause: missing Vercel `VITE_API_URL`.</p><br><p>Fix:</p><br><pre><code>cd nurseconnect-frontend
+vercel env add VITE_API_URL production
+vercel --prod
+</code></pre><br><p>Value:</p><br><pre><code>https://sevasetu-ebtq.onrender.com
+</code></pre><br><h3>Render first request is slow</h3><br><p>Cause: Render free instance spins down after inactivity.</p><br><p>Fix: wait 30-60 seconds and retry.</p><br><h3>Check-in failed</h3><br><p>Possible causes:</p><br><ul><li>Wrong OTP</li><li>Request not assigned</li><li>Backend server error</li><li>Old backend build</li></ul><br><p>Expected wrong OTP message:</p><br><pre><code>Invalid check-in OTP
+</code></pre><br><p>If generic failure happens, check Render logs.</p><br><h3>Vercel does not show latest code</h3><br><p>Fix:</p><br><pre><code>cd nurseconnect-frontend
+vercel --prod
+</code></pre><br><p>Then hard refresh.</p><br><h3>`.env` accidentally tracked</h3><br><p>Fix:</p><br><pre><code>git rm --cached nurseconnect-backend/.env
+git commit -m "Remove env from git"
+git push origin main
+</code></pre><br><p>Then rotate exposed secrets immediately.</p><br><h2>11. Full End-to-End Demo Flow</h2><br><h3>Patient + Nurse + Admin</h3><br><ol><li>Open frontend.</li><li>Register nurse.</li><li>Admin approves nurse.</li><li>Nurse logs in and goes online.</li><li>Patient logs in.</li><li>Patient books temporary nurse request.</li><li>Nurse accepts request.</li><li>Patient shares check-in OTP.</li><li>Nurse checks in.</li><li>Patient shares check-out OTP.</li><li>Nurse checks out.</li><li>Patient rates nurse.</li><li>Nurse earnings update.</li><li>Admin checks requests/safety/dashboard.</li></ol><br><p>Expected final result:</p><br><ul><li>Request status completed.</li><li>Nurse earnings increased.</li><li>Patient rating saved.</li><li>Admin can view completed request.</li></ul><br><h2>12. Feature Files Map</h2><br><pre><code>Authentication:
+  frontend/src/context/AuthContext.jsx
+  backend/src/controllers/auth.controller.js
+
+Language:
+  frontend/src/context/LanguageContext.jsx
+  frontend/src/components/LanguageSelector.jsx
+
+Patient dashboard:
+  frontend/src/pages/PatientDashboard.jsx
+
+Nurse dashboard:
+  frontend/src/pages/NurseDashboard.jsx
+
+Admin dashboard:
+  frontend/src/pages/AdminDashboard.jsx
+
+Requests:
+  backend/src/models/Request.js
+  backend/src/controllers/request.controller.js
+  backend/src/routes/request.routes.js
+
+Safety:
+  backend/src/models/SafetyAlert.js
+  backend/src/controllers/admin.controller.js
+  backend/src/controllers/request.controller.js
+
+Notifications:
+  backend/src/models/Notification.js
+  backend/src/controllers/notification.controller.js
+
+AI:
+  backend/src/services/aiProvider.service.js
+  backend/src/controllers/ai.controller.js
+  frontend/src/pages/NurseInterview.jsx
+
+Deployment:
+  frontend/vercel.json
+  backend/render.yaml
+</code></pre><br><h2>13. Current Live Links</h2><br><pre><code>Frontend:
+https://sevasetu-frontend.vercel.app
+
+Backend:
+https://sevasetu-ebtq.onrender.com
+
+Health:
+https://sevasetu-ebtq.onrender.com/api/health
+
+GitHub:
+https://github.com/kanhachouhan601/SevaSetu
+</code></pre><br><h2>14. Notes for CMHO/Demo Submission</h2><br><p>This project is a working MVP/demo, not a fully hardened production healthcare system yet.</p><br><p>For approval/pilot submission, prepare:</p><br><ul><li>Project proposal</li><li>Demo video</li><li>Safety protocol</li><li>Nurse verification process</li><li>Patient consent text</li><li>Privacy policy</li><li>Emergency/SOS escalation process</li><li>Pilot plan</li><li>Test logs/screenshots</li></ul><br><p>Production hardening still recommended:</p><br><ul><li>Real SMS/WhatsApp OTP</li><li>Payment gateway</li><li>Live socket notifications</li><li>Strong security audit</li><li>Legal review</li><li>Medical governance/SOP review</li><li>Monitoring and backups</li></ul><br></body></html>

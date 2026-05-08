@@ -3,6 +3,7 @@ import axios from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import LanguageSelector from "../components/LanguageSelector";
+import VoiceInputButton from "../components/VoiceInputButton";
 
 // ── Icons (inline SVG helpers) ───────────────────────────────
 const HeartIcon = () => (
@@ -66,6 +67,7 @@ const StarIcon = ({ filled }) => (
 
 // ── Status badge ─────────────────────────────────────────────
 const STATUS_STYLES = {
+  "pending-admin": "bg-purple-100 text-purple-700 border border-purple-200",
   pending: "bg-yellow-100 text-yellow-700 border border-yellow-200",
   matched: "bg-blue-100 text-blue-700 border border-blue-200",
   "interview-scheduled": "bg-purple-100 text-purple-700 border border-purple-200",
@@ -74,6 +76,7 @@ const STATUS_STYLES = {
   cancelled: "bg-red-100 text-red-600 border border-red-200",
 };
 const STATUS_LABELS = {
+  "pending-admin": "Admin Review",
   pending: "⏳ Pending",
   matched: "🔗 Matched",
   "interview-scheduled": "🎥 Interview Scheduled",
@@ -91,6 +94,9 @@ function StatusBadge({ status }) {
 }
 
 function getPatientNextStep(req, t) {
+  if (req.status === "pending-admin") {
+    return "Admin is verifying your request. Nurses will see it after approval.";
+  }
   if (req.status === "pending") {
     return req.safetyReview?.required && !req.safetyReview?.approved
       ? t("nextSafety")
@@ -380,6 +386,10 @@ export default function PatientDashboard() {
   const [loadingReqs, setLoadingReqs] = useState(true);
   const [ratingDrafts, setRatingDrafts] = useState({});
   const [ratingSubmitting, setRatingSubmitting] = useState({});
+  const [feedbackVoiceError, setFeedbackVoiceError] = useState("");
+  const [activeTab, setActiveTab] = useState("book");
+  const [showBookingMore, setShowBookingMore] = useState(false);
+  const [expandedRequestId, setExpandedRequestId] = useState(null);
 
   useEffect(() => {
     fetchRequests();
@@ -568,11 +578,12 @@ export default function PatientDashboard() {
       await axios.post("/api/request", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setBookMsg({ type: "success", text: "✅ Request submitted! We'll match you with a nurse soon." });
+      setBookMsg({ type: "success", text: "Request submitted for admin review. Nurses will see it after approval." });
       setProblem("");
       setRequirements("");
       setAddress("");
       setAttachments([]);
+      setActiveTab("active");
       fetchRequests();
       fetchNotifications();
     } catch (err) {
@@ -629,113 +640,54 @@ export default function PatientDashboard() {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-sky-100/50">
-      {/* ── Header ── */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-sky-100 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-xl bg-sky-500 flex items-center justify-center text-white">
-              <HeartIcon />
-            </div>
-            <div>
-              <p className="font-bold text-sky-900 leading-none">SevaSetu</p>
-              <p className="text-xs text-sky-500 mt-0.5">{user?.name || user?.email || t("patient")}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <LanguageSelector compact />
-            <div className="relative">
-              <button
-                onClick={openNotifications}
-                className="relative p-2 rounded-xl bg-white border border-sky-100 text-gray-500 hover:text-sky-600 hover:border-sky-200 transition-colors"
-              >
-                <BellIcon />
-                {notifCount > 0 && (
-                  <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                    {notifCount}
-                  </span>
-                )}
-              </button>
-              {showNotifications && <NotificationDropdown notifications={notifications} />}
-            </div>
-            <button
-              onClick={logout}
-              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-600 border border-gray-200 hover:border-red-200 px-3 py-1.5 rounded-lg transition-colors"
-            >
-              <LogOutIcon /> {t("logout")}
-            </button>
-          </div>
+  const activeRequests = requests.filter(req => !["completed", "cancelled"].includes(req.status));
+  const historyRequests = requests.filter(req => ["completed", "cancelled"].includes(req.status));
+  const currentRequest = activeRequests[0];
+
+  function requestKey(req) {
+    return req._id || req.id;
+  }
+
+  function shortProblem(text = "") {
+    return text.length > 90 ? `${text.slice(0, 90)}...` : text;
+  }
+
+  function renderBookingForm() {
+    return (
+      <div className="bg-white rounded-2xl border border-sky-100 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-sky-50">
+          <p className="text-lg font-bold text-gray-900">{t("bookNurse")}</p>
+          <p className="text-sm text-gray-500 mt-0.5">Bas problem batayein. Baaki matching hum kar denge.</p>
         </div>
-      </header>
-
-      <main className="max-w-4xl mx-auto px-4 py-6 space-y-6 pb-32">
-
-        {/* ── SOS Button ── */}
-        <div className="flex justify-center pt-2">
-          <button
-            onClick={() => setShowSOS(true)}
-            className="relative h-28 w-28 rounded-full bg-red-600 hover:bg-red-700 active:scale-95 text-white shadow-2xl shadow-red-400/50 transition-all duration-200 flex flex-col items-center justify-center"
-          >
-            <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-30" />
-            <span className="text-3xl font-black tracking-wider">SOS</span>
-            <span className="text-xs font-medium opacity-80 mt-0.5">Emergency</span>
-          </button>
-        </div>
-
-        {/* ── Book a Nurse ── */}
-        <div className="bg-white rounded-2xl shadow-sm border border-sky-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-sky-500 to-sky-600 px-5 py-4">
-            <h2 className="text-white font-bold text-lg">{t("bookNurse")}</h2>
-            <p className="text-sky-100 text-sm mt-0.5">{t("bookSubtitle")}</p>
+        <form onSubmit={handleBookSubmit} className="p-5 space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-800 mb-1.5">{t("describeProblem")}</label>
+            <textarea
+              rows={4}
+              className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200 resize-none bg-gray-50"
+              placeholder="Jaise: Maa ko injection aur BP monitoring chahiye..."
+              value={problem}
+              onChange={e => setProblem(e.target.value)}
+              required
+            />
+            <DictationControls target="problem" />
+            {voiceError && <p className="mt-2 text-xs text-red-600">{voiceError}</p>}
           </div>
-          <form onSubmit={handleBookSubmit} className="p-5 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("describeProblem")}</label>
-              <textarea
-                rows={3}
-                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-300 resize-none bg-gray-50"
-                placeholder="e.g. My mother needs wound dressing after knee surgery..."
-                value={problem}
-                onChange={e => setProblem(e.target.value)}
-                required
-              />
-              <DictationControls target="problem" />
-            </div>
 
+          <div className="grid gap-3 sm:grid-cols-[1fr_1.3fr]">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("requirements")}</label>
-              <textarea
-                rows={3}
-                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-300 resize-none bg-gray-50"
-                placeholder="e.g. Female nurse preferred, night care, injection, catheter care, post-surgery monitoring..."
-                value={requirements}
-                onChange={e => setRequirements(e.target.value)}
-              />
-              <DictationControls target="requirements" />
-              {voiceError && (
-                <p className="mt-2 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600">
-                  {voiceError}
-                </p>
-              )}
-            </div>
-
-            {/* Mode toggle */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("serviceType")}</label>
-              <div className="inline-flex rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
+              <label className="block text-sm font-semibold text-gray-800 mb-1.5">{t("serviceType")}</label>
+              <div className="grid grid-cols-2 rounded-xl border border-gray-200 bg-gray-50 p-1">
                 {[
-                  { val: "temporary", label: `⚡ ${t("temporary")}` },
-                  { val: "longterm", label: `📅 ${t("longterm")}` },
+                  { val: "temporary", label: t("temporary") },
+                  { val: "longterm", label: t("longterm") },
                 ].map(opt => (
                   <button
                     key={opt.val}
                     type="button"
                     onClick={() => setMode(opt.val)}
-                    className={`px-4 py-2 text-sm font-medium transition-colors ${
-                      mode === opt.val
-                        ? "bg-sky-500 text-white"
-                        : "text-gray-600 hover:text-gray-900"
+                    className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                      mode === opt.val ? "bg-sky-500 text-white shadow-sm" : "text-gray-600"
                     }`}
                   >
                     {opt.label}
@@ -743,337 +695,410 @@ export default function PatientDashboard() {
                 ))}
               </div>
             </div>
-
-            {mode === "temporary" && (
-              <div className="rounded-xl border border-orange-100 bg-orange-50 px-3.5 py-3">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-orange-900">{t("pickupLocation")}</p>
-                    <p className="text-xs text-orange-700">
-                      Nearest nurse aur arrival time dikhane ke liye current location use hogi.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={capturePatientLocation}
-                    className="rounded-lg bg-orange-600 px-3 py-2 text-xs font-semibold text-white hover:bg-orange-700"
-                  >
-                    {t("useCurrentLocation")}
-                  </button>
-                </div>
-                {(locationMsg || patientLocation) && (
-                  <p className="mt-2 text-xs text-orange-700">
-                    {locationMsg || "Pickup location ready."}
-                    {patientLocation?.accuracy ? ` Accuracy: ${Math.round(patientLocation.accuracy)}m` : ""}
-                  </p>
-                )}
-              </div>
-            )}
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t("address")}</label>
+              <label className="block text-sm font-semibold text-gray-800 mb-1.5">{t("address")}</label>
               <input
                 type="text"
-                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-300 bg-gray-50"
-                placeholder="Flat 4B, Sector 15, Noida, UP"
+                className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200 bg-gray-50"
+                placeholder="Ghar ka address"
                 value={address}
                 onChange={e => setAddress(e.target.value)}
                 required
               />
             </div>
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Hospital file / reports</label>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="flex items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 text-sky-700 text-sm font-semibold py-3 cursor-pointer hover:bg-sky-100 transition">
-                  <PaperclipIcon /> Add from gallery
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*,application/pdf"
-                    className="hidden"
-                    onChange={e => addAttachments(e.target.files, "gallery")}
-                  />
-                </label>
-                <label className="flex items-center justify-center gap-2 rounded-xl border border-teal-200 bg-teal-50 text-teal-700 text-sm font-semibold py-3 cursor-pointer hover:bg-teal-100 transition">
-                  <CameraIcon /> Take photo
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={e => addAttachments(e.target.files, "camera")}
-                  />
-                </label>
+          <button
+            type="button"
+            onClick={() => setShowBookingMore(value => !value)}
+            className="text-sm font-semibold text-sky-700"
+          >
+            {showBookingMore ? "Hide optional details" : "Add optional details"}
+          </button>
+
+          {showBookingMore && (
+            <div className="space-y-4 rounded-xl border border-gray-100 bg-gray-50/70 p-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5">{t("requirements")}</label>
+                <textarea
+                  rows={3}
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200 resize-none bg-white"
+                  placeholder="Female nurse, night care, injection, dressing..."
+                  value={requirements}
+                  onChange={e => setRequirements(e.target.value)}
+                />
+                <DictationControls target="requirements" />
               </div>
-              {attachments.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {attachments.map((item, index) => (
-                    <div key={`${item.file.name}-${index}`} className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium text-gray-700 truncate">{item.file.name}</p>
-                        <p className="text-[11px] text-gray-400">{item.source === "camera" ? "Camera photo" : "Gallery/file"} · {(item.file.size / 1024 / 1024).toFixed(2)} MB</p>
-                      </div>
-                      <button type="button" onClick={() => removeAttachment(index)} className="text-xs text-red-500 hover:text-red-600">Remove</button>
-                    </div>
-                  ))}
+
+              {mode === "temporary" && (
+                <div className="rounded-xl border border-orange-100 bg-orange-50 px-3.5 py-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-orange-800">Current location se nearest nurse aur ETA better milega.</p>
+                    <button
+                      type="button"
+                      onClick={capturePatientLocation}
+                      className="rounded-lg bg-orange-600 px-3 py-2 text-xs font-semibold text-white hover:bg-orange-700"
+                    >
+                      {t("useCurrentLocation")}
+                    </button>
+                  </div>
+                  {(locationMsg || patientLocation) && (
+                    <p className="mt-2 text-xs text-orange-700">
+                      {locationMsg || "Pickup location ready."}
+                      {patientLocation?.accuracy ? ` Accuracy: ${Math.round(patientLocation.accuracy)}m` : ""}
+                    </p>
+                  )}
                 </div>
               )}
-              <p className="text-xs text-gray-400 mt-2">Up to 5 files. JPG, PNG, WEBP or PDF.</p>
-            </div>
 
-            {bookMsg && (
-              <div className={`text-sm px-3.5 py-2.5 rounded-xl ${bookMsg.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
-                {bookMsg.text}
+              <div>
+                <p className="mb-2 text-sm font-semibold text-gray-800">Medical files</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="flex items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white text-sky-700 text-sm font-semibold py-3 cursor-pointer hover:bg-sky-50 transition">
+                    <PaperclipIcon /> Upload
+                    <input type="file" multiple accept="image/*,application/pdf" className="hidden" onChange={e => addAttachments(e.target.files, "gallery")} />
+                  </label>
+                  <label className="flex items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white text-teal-700 text-sm font-semibold py-3 cursor-pointer hover:bg-teal-50 transition">
+                    <CameraIcon /> Photo
+                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => addAttachments(e.target.files, "camera")} />
+                  </label>
+                </div>
+                {attachments.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {attachments.map((item, index) => (
+                      <div key={`${item.file.name}-${index}`} className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 bg-white px-3 py-2">
+                        <p className="min-w-0 truncate text-xs font-medium text-gray-700">{item.file.name}</p>
+                        <button type="button" onClick={() => removeAttachment(index)} className="text-xs text-red-500">Remove</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+          )}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white font-semibold py-3 px-4 rounded-xl transition-colors"
-            >
-              {submitting ? t("submitting") : t("submitRequest")}
-            </button>
-          </form>
+          {bookMsg && (
+            <div className={`text-sm px-3.5 py-2.5 rounded-xl ${bookMsg.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+              {bookMsg.text}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white font-semibold py-3 px-4 rounded-xl transition-colors"
+          >
+            {submitting ? t("submitting") : t("submitRequest")}
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  function renderRatingPanel(req) {
+    const id = requestKey(req);
+    if (req.nurseRating?.ratedAt) {
+      return (
+        <div className="rounded-xl border border-amber-100 bg-amber-50 p-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-amber-800">Your rating</span>
+            <div className="flex">
+              {[1, 2, 3, 4, 5].map(star => <StarIcon key={star} filled={star <= Number(req.nurseRating?.score || 0)} />)}
+            </div>
+          </div>
+          {req.nurseRating?.comment && <p className="mt-1 text-xs text-gray-600">{req.nurseRating.comment}</p>}
+        </div>
+      );
+    }
+
+    const draft = ratingDrafts[id] || { score: 5 };
+    return (
+      <div className="rounded-xl border border-amber-100 bg-amber-50/70 p-3 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-gray-900">Rate nurse care</p>
+          <div className="flex">
+            {[1, 2, 3, 4, 5].map(star => (
+              <button key={star} type="button" onClick={() => updateRatingDraft(id, { score: star })} className="p-0.5">
+                <StarIcon filled={star <= Number(draft.score || 5)} />
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <select value={draft.behavior || ""} onChange={e => updateRatingDraft(id, { behavior: e.target.value })} className="rounded-lg border border-amber-100 bg-white px-2 py-2 text-xs text-gray-700">
+            <option value="">Behavior</option>
+            <option value="excellent">Excellent</option>
+            <option value="good">Good</option>
+            <option value="average">Average</option>
+            <option value="poor">Poor</option>
+          </select>
+          <select value={draft.careQuality || ""} onChange={e => updateRatingDraft(id, { careQuality: e.target.value })} className="rounded-lg border border-amber-100 bg-white px-2 py-2 text-xs text-gray-700">
+            <option value="">Care quality</option>
+            <option value="excellent">Excellent</option>
+            <option value="good">Good</option>
+            <option value="average">Average</option>
+            <option value="poor">Poor</option>
+          </select>
+        </div>
+        <textarea
+          rows={2}
+          value={draft.comment || ""}
+          onChange={e => updateRatingDraft(id, { comment: e.target.value })}
+          placeholder="Nurse ka behavior, care, timing ya hygiene ke baare me likhein..."
+          className="w-full rounded-lg border border-amber-100 bg-white px-3 py-2 text-xs text-gray-700 outline-none focus:ring-2 focus:ring-amber-200 resize-none"
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <VoiceInputButton
+            value={draft.comment || ""}
+            onChange={text => updateRatingDraft(id, { comment: text })}
+            label="Speak feedback"
+            idleClassName="border-amber-200 bg-white text-amber-700 hover:bg-amber-50"
+            onError={setFeedbackVoiceError}
+          />
+          <span className="text-[11px] text-amber-700">Hindi/Hinglish voice supported</span>
+        </div>
+        {feedbackVoiceError && <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600">{feedbackVoiceError}</p>}
+        <button type="button" onClick={() => submitRating(id)} disabled={ratingSubmitting[id]} className="w-full rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-50">
+          {ratingSubmitting[id] ? "Submitting..." : "Submit Rating"}
+        </button>
+      </div>
+    );
+  }
+
+  function renderRequestCard(req) {
+    const id = requestKey(req);
+    const expanded = expandedRequestId === id;
+    const needsCheckIn = req.nurseId && req.status === "matched" && !req.visit?.checkedInAt;
+    const needsCheckOut = req.nurseId && req.status === "in-progress";
+
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-900 leading-snug">{shortProblem(req.problem)}</p>
+            <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
+              <span>{req.mode === "longterm" ? t("longterm") : t("temporary")}</span>
+              {req.amount > 0 && <span className="font-semibold text-emerald-600">₹{Number(req.amount).toLocaleString()}</span>}
+              {req.createdAt && <span>{new Date(req.createdAt).toLocaleDateString("en-IN")}</span>}
+            </div>
+          </div>
+          <StatusBadge status={req.status} />
         </div>
 
-        {/* ── My Requests ── */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-gray-900 text-lg">{t("myRequests")}</h2>
-            <button onClick={fetchRequests} className="text-xs text-sky-600 hover:underline">{t("refresh")}</button>
+        <div className="mt-3 rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-900">
+          {getPatientNextStep(req, t)}
+        </div>
+
+        {req.nurseId?.name && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-teal-100 bg-teal-50 px-3 py-2 text-sm text-teal-900">
+            <span>Nurse: <strong>{req.nurseId.name}</strong></span>
+            {req.nurseId.phone && <a href={`tel:${req.nurseId.phone}`} className="font-semibold text-teal-700">Call</a>}
           </div>
-          {loadingReqs ? (
-            <div className="space-y-3">
-              {[1, 2].map(i => (
-                <div key={i} className="bg-white rounded-xl border border-gray-100 p-4 animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-1/2 mb-2" />
-                  <div className="h-3 bg-gray-100 rounded w-1/3" />
-                </div>
-              ))}
+        )}
+
+        {(needsCheckIn || needsCheckOut) && (
+          <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-3">
+            <p className="text-xs font-semibold text-emerald-800">{needsCheckIn ? "Share this OTP when nurse arrives" : "Share this OTP after work is complete"}</p>
+            <p className="mt-1 text-2xl font-black tracking-[0.25em] text-emerald-900">
+              {needsCheckIn ? req.visit?.checkInOtp : req.visit?.checkOutOtp}
+            </p>
+          </div>
+        )}
+
+        {req.arrivalEtaAt && ["matched", "in-progress"].includes(req.status) && (
+          <div className="mt-3 text-xs text-gray-600">
+            Expected arrival: <strong>{new Date(req.arrivalEtaAt).toLocaleString("en-IN")}</strong>
+            {req.rideTracking?.estimatedArrivalMinutes ? ` (${req.rideTracking.estimatedArrivalMinutes} min)` : ""}
+          </div>
+        )}
+
+        {req.status === "completed" && req.nurseId && !req.nurseRating?.ratedAt && (
+          <div className="mt-3">
+            {renderRatingPanel(req)}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setExpandedRequestId(expanded ? null : id)}
+          className="mt-3 text-sm font-semibold text-sky-700"
+        >
+          {expanded ? "Hide details" : "View details"}
+        </button>
+
+        {expanded && (
+          <div className="mt-3 space-y-2 border-t border-gray-100 pt-3 text-xs text-gray-600">
+            <p><strong>Address:</strong> {req.address || "Not provided"}</p>
+            {req.requirements && <p><strong>Requirements:</strong> {req.requirements}</p>}
+            {req.safetyReview?.required && (
+              <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-red-700">
+                Safety review: {req.safetyReview.reason || "extra verification required"}{req.safetyReview.approved ? " · Approved" : " · Pending"}
+              </p>
+            )}
+            {req.interviewSchedule?.startsAt && (
+              <p className="rounded-lg border border-purple-100 bg-purple-50 px-3 py-2 text-purple-700">
+                AI interview scheduled: {new Date(req.interviewSchedule.startsAt).toLocaleString("en-IN")}
+              </p>
+            )}
+            {req.attachments?.length > 0 && <p>Medical files uploaded: {req.attachments.length}</p>}
+            {req.aiSummary && <p><strong>AI summary:</strong> {req.aiSummary}</p>}
+            {req.matchingReason && <p><strong>Match:</strong> {req.matchingReason}</p>}
+            {req.status === "completed" && req.nurseId && req.nurseRating?.ratedAt && renderRatingPanel(req)}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500 text-white">
+              <HeartIcon />
             </div>
-          ) : requests.length === 0 ? (
-            <div className="bg-white rounded-xl border border-dashed border-sky-200 p-8 text-center text-gray-400">
-              <p className="text-3xl mb-2">🩺</p>
-              <p className="text-sm">{t("noRequests")}</p>
+            <div>
+              <p className="font-bold leading-none text-gray-950">SevaSetu</p>
+              <p className="mt-0.5 text-xs text-gray-500">{user?.name || user?.email || t("patient")}</p>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {requests.map(req => (
-                <div key={req._id || req.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <p className="font-medium text-gray-900 text-sm leading-snug flex-1">{req.problem}</p>
-                    <StatusBadge status={req.status} />
-                  </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
-                    <span>{req.mode === "longterm" ? `📅 ${t("longterm")}` : `⚡ ${t("temporary")}`}</span>
-                    {req.amount > 0 && (
-                      <span className="font-semibold text-emerald-600">
-                        ₹{Number(req.amount).toLocaleString()}
-                      </span>
-                    )}
-                    <span>📍 {req.address || "—"}</span>
-                    {/* ✅ FIX: Show created date instead of raw ID */}
-                    <span>{req.createdAt ? new Date(req.createdAt).toLocaleDateString("en-IN") : ""}</span>
-                  </div>
-                  <div className="mt-2 rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-xs font-medium text-sky-800">
-                    {getPatientNextStep(req, t)}
-                  </div>
-                  {/* ✅ FIX: Nurse is populated as object under nurseId, not nurseId.name */}
-                  {req.nurseId?.name && (
-                    <div className="mt-2 text-xs bg-sky-50 text-sky-700 px-3 py-1.5 rounded-lg border border-sky-100">
-                      👩‍⚕️ Nurse assigned: <strong>{req.nurseId.name}</strong>
-                      {req.nurseId.phone && <span className="ml-2 text-sky-500">📞 {req.nurseId.phone}</span>}
-                    </div>
-                  )}
-                  {req.mode === "temporary" && req.nurseId && ["matched", "in-progress"].includes(req.status) && (
-                    <div className="mt-2 rounded-xl border border-orange-100 bg-orange-50 p-3 text-xs text-orange-800">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="font-bold text-orange-950">Nurse is on the way</p>
-                          <p className="mt-1">
-                            {req.nurseId?.name || "Nurse"} {req.nurseId?.phone ? `· ${req.nurseId.phone}` : ""}
-                          </p>
-                          <p className="mt-1">
-                            ETA: <strong>{req.rideTracking?.estimatedArrivalMinutes || 45} min</strong>
-                            {req.rideTracking?.estimatedDistanceKm ? ` · ${req.rideTracking.estimatedDistanceKm} km away` : ""}
-                          </p>
-                          {req.arrivalEtaAt && (
-                            <p className="mt-1">Expected by {new Date(req.arrivalEtaAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</p>
-                          )}
-                        </div>
-                        {req.rideTracking?.nurseStartLocation?.lat && (
-                          <a
-                            href={`https://maps.google.com/?q=${req.rideTracking.nurseStartLocation.lat},${req.rideTracking.nurseStartLocation.lng}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="shrink-0 rounded-lg bg-white px-3 py-2 font-semibold text-orange-700 border border-orange-200"
-                          >
-                            Map
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {req.safetyReview?.required && (
-                    <div className="mt-2 text-xs bg-red-50 text-red-700 px-3 py-1.5 rounded-lg border border-red-100">
-                      Safety review active: {req.safetyReview.reason || "extra verification required"}
-                      {req.safetyReview.approved ? " · Approved by admin" : " · Pending admin review"}
-                    </div>
-                  )}
-                  {req.nurseId && ["matched", "in-progress"].includes(req.status) && (
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                      <div className="rounded-lg border border-teal-100 bg-teal-50 px-3 py-2 text-teal-700">
-                        Check-in OTP
-                        <strong className="block text-base tracking-widest">{req.visit?.checkInOtp || "—"}</strong>
-                      </div>
-                      <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-emerald-700">
-                        Check-out OTP
-                        <strong className="block text-base tracking-widest">{req.visit?.checkOutOtp || "—"}</strong>
-                      </div>
-                    </div>
-                  )}
-                  {req.arrivalEtaAt && (
-                    <div className="mt-2 text-xs bg-green-50 text-green-700 px-3 py-1.5 rounded-lg border border-green-100">
-                      🚕 Estimated nurse arrival: <strong>{new Date(req.arrivalEtaAt).toLocaleString("en-IN")}</strong>
-                    </div>
-                  )}
-                  {req.interviewSchedule?.startsAt && (
-                    <div className="mt-2 text-xs bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg border border-purple-100">
-                      🎥 Long-term nurse AI interview scheduled: <strong>{new Date(req.interviewSchedule.startsAt).toLocaleString("en-IN")}</strong>
-                    </div>
-                  )}
-                  {req.matchingReason && (
-                    <div className="mt-2 text-xs bg-teal-50 text-teal-700 px-3 py-1.5 rounded-lg border border-teal-100">
-                      Match logic: {req.matchingReason}
-                    </div>
-                  )}
-                  {req.attachments?.length > 0 && (
-                    <div className="mt-2 text-xs bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg border border-gray-100">
-                      📎 {req.attachments.length} medical file(s) uploaded
-                    </div>
-                  )}
-                  {req.aiSummary && (
-                    <div className="mt-2 text-xs bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg border border-purple-100">
-                      🤖 AI Summary: {req.aiSummary}
-                    </div>
-                  )}
-                  {req.status === "completed" && req.nurseId && (
-                    <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50/60 p-3">
-                      {req.nurseRating?.ratedAt ? (
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-amber-800">Your rating</span>
-                            <div className="flex">
-                              {[1, 2, 3, 4, 5].map(star => (
-                                <StarIcon key={star} filled={star <= Number(req.nurseRating?.score || 0)} />
-                              ))}
-                            </div>
-                          </div>
-                          {(req.nurseRating?.behavior || req.nurseRating?.careQuality) && (
-                            <p className="mt-1 text-xs text-amber-700">
-                              Behavior: {req.nurseRating.behavior || "—"} · Care: {req.nurseRating.careQuality || "—"}
-                            </p>
-                          )}
-                          {req.nurseRating?.comment && <p className="mt-1 text-xs text-gray-600">{req.nurseRating.comment}</p>}
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-sm font-semibold text-gray-900">Rate nurse care</p>
-                            <div className="flex">
-                              {[1, 2, 3, 4, 5].map(star => {
-                                const draft = ratingDrafts[req._id || req.id] || { score: 5 };
-                                return (
-                                  <button
-                                    key={star}
-                                    type="button"
-                                    onClick={() => updateRatingDraft(req._id || req.id, { score: star })}
-                                    className="p-0.5"
-                                  >
-                                    <StarIcon filled={star <= Number(draft.score || 5)} />
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <select
-                              value={(ratingDrafts[req._id || req.id] || {}).behavior || ""}
-                              onChange={e => updateRatingDraft(req._id || req.id, { behavior: e.target.value })}
-                              className="rounded-lg border border-amber-100 bg-white px-2 py-2 text-xs text-gray-700 outline-none focus:ring-2 focus:ring-amber-200"
-                            >
-                              <option value="">Behavior</option>
-                              <option value="excellent">Excellent</option>
-                              <option value="good">Good</option>
-                              <option value="average">Average</option>
-                              <option value="poor">Poor</option>
-                            </select>
-                            <select
-                              value={(ratingDrafts[req._id || req.id] || {}).careQuality || ""}
-                              onChange={e => updateRatingDraft(req._id || req.id, { careQuality: e.target.value })}
-                              className="rounded-lg border border-amber-100 bg-white px-2 py-2 text-xs text-gray-700 outline-none focus:ring-2 focus:ring-amber-200"
-                            >
-                              <option value="">Care quality</option>
-                              <option value="excellent">Excellent</option>
-                              <option value="good">Good</option>
-                              <option value="average">Average</option>
-                              <option value="poor">Poor</option>
-                            </select>
-                          </div>
-                          <textarea
-                            rows={2}
-                            value={(ratingDrafts[req._id || req.id] || {}).comment || ""}
-                            onChange={e => updateRatingDraft(req._id || req.id, { comment: e.target.value })}
-                            placeholder="Nurse ka behavior, care, timing ya hygiene ke baare me likhein..."
-                            className="w-full rounded-lg border border-amber-100 bg-white px-3 py-2 text-xs text-gray-700 outline-none focus:ring-2 focus:ring-amber-200 resize-none"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => submitRating(req._id || req.id)}
-                            disabled={ratingSubmitting[req._id || req.id]}
-                            className="w-full rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
-                          >
-                            {ratingSubmitting[req._id || req.id] ? "Submitting rating..." : "Submit Rating"}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <LanguageSelector compact />
+            <div className="relative">
+              <button onClick={openNotifications} className="relative rounded-xl border border-gray-200 bg-white p-2 text-gray-500 hover:text-sky-600">
+                <BellIcon />
+                {notifCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                    {notifCount}
+                  </span>
+                )}
+              </button>
+              {showNotifications && <NotificationDropdown notifications={notifications} />}
+            </div>
+            <button onClick={logout} className="rounded-xl border border-gray-200 bg-white p-2 text-gray-500 hover:text-red-600" title={t("logout")}>
+              <LogOutIcon />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-3xl px-4 pb-28 pt-5">
+        <div className="mb-5 rounded-2xl border border-sky-100 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xl font-bold text-gray-950">How can we help today?</p>
+              <p className="mt-1 text-sm text-gray-500">Book a nurse, track your visit, and share OTP when needed.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowSOS(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-bold text-red-700 hover:bg-red-100"
+            >
+              Emergency SOS
+            </button>
+          </div>
+          {currentRequest && (
+            <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+              <strong>Current visit:</strong> {getPatientNextStep(currentRequest, t)}
             </div>
           )}
         </div>
 
-        {/* ── Stats footer ── */}
-        <div className="grid grid-cols-3 gap-3 pt-2">
+        <div className="mb-5 grid grid-cols-3 rounded-2xl border border-gray-200 bg-white p-1 shadow-sm">
           {[
-            { val: "3 Lakh+", label: "Verified Nurses" },
-            { val: "1 Lakh+", label: "Happy Patients" },
-            { val: "98%", label: "Satisfaction" },
-          ].map(s => (
-            <div key={s.label} className="bg-white rounded-xl border border-sky-100 p-3 text-center shadow-sm">
-              <p className="font-extrabold text-sky-600 text-lg leading-none">{s.val}</p>
-              <p className="text-xs text-gray-500 mt-1">{s.label}</p>
-            </div>
+            { id: "book", label: "Book" },
+            { id: "active", label: `Active ${activeRequests.length ? `(${activeRequests.length})` : ""}` },
+            { id: "history", label: "History" },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
+                activeTab === tab.id ? "bg-sky-500 text-white shadow-sm" : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {tab.label}
+            </button>
           ))}
         </div>
+
+        {activeTab === "book" && (
+          <div className="space-y-4">
+            {renderBookingForm()}
+            {currentRequest && (
+              <div>
+                <p className="mb-2 text-sm font-bold text-gray-800">Your current request</p>
+                {renderRequestCard(currentRequest)}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "active" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-950">Active Requests</h2>
+              <button onClick={fetchRequests} className="text-sm font-semibold text-sky-700">{t("refresh")}</button>
+            </div>
+            {loadingReqs ? (
+              <div className="rounded-2xl border border-gray-100 bg-white p-5 text-sm text-gray-400">Loading requests...</div>
+            ) : activeRequests.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-8 text-center">
+                <p className="text-sm text-gray-500">No active request right now.</p>
+                <button type="button" onClick={() => setActiveTab("book")} className="mt-3 rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white">
+                  Book a nurse
+                </button>
+              </div>
+            ) : (
+              activeRequests.map(req => (
+                <div key={requestKey(req)}>{renderRequestCard(req)}</div>
+              ))
+            )}
+          </div>
+        )}
+
+        {activeTab === "history" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-950">History</h2>
+              <button onClick={fetchRequests} className="text-sm font-semibold text-sky-700">{t("refresh")}</button>
+            </div>
+            {loadingReqs ? (
+              <div className="rounded-2xl border border-gray-100 bg-white p-5 text-sm text-gray-400">Loading history...</div>
+            ) : historyRequests.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
+                Completed visits will appear here.
+              </div>
+            ) : (
+              historyRequests.map(req => (
+                <div key={requestKey(req)}>{renderRequestCard(req)}</div>
+              ))
+            )}
+          </div>
+        )}
       </main>
 
-      {/* ── Floating AI Button ── */}
-      <button
-        onClick={() => setShowChat(true)}
-        className="fixed bottom-6 left-6 flex items-center gap-2 bg-sky-500 hover:bg-sky-600 text-white font-semibold px-4 py-3 rounded-full shadow-lg shadow-sky-400/40 transition-all active:scale-95"
-      >
-        <BotIcon />
-        <span className="text-sm">{t("aiAssistant")}</span>
-      </button>
+      <div className="fixed bottom-5 left-4 right-4 z-30 mx-auto flex max-w-3xl items-center justify-between gap-3 pointer-events-none">
+        <button
+          onClick={() => setShowChat(true)}
+          className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-sky-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-300/50 hover:bg-sky-600"
+        >
+          <BotIcon />
+          {t("aiAssistant")}
+        </button>
+        <button
+          onClick={() => setShowSOS(true)}
+          className="pointer-events-auto rounded-full bg-red-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-red-300/50 hover:bg-red-700"
+        >
+          SOS
+        </button>
+      </div>
 
-      {/* ── Modals ── */}
       {showSOS && <SOSDialog onClose={() => setShowSOS(false)} />}
       {showChat && <AIChatModal onClose={() => setShowChat(false)} />}
     </div>
   );
+
 }
