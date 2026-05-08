@@ -46,6 +46,8 @@ export default function NurseInterview() {
   const currentIndexRef = useRef(-1);
   const awaitingReadyRef = useRef(false);
   const handlingAnswerRef = useRef(false);
+  const speakingRef = useRef(false);
+  const lastInterruptRef = useRef(0);
 
   const [request, setRequest] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -76,13 +78,11 @@ export default function NurseInterview() {
     setTranscript(transcriptRef.current);
   }, []);
 
-  const { speak, cancel, speaking, voiceReady } = useSpeechSynthesis({
-    volume,
-    onStart: () => stopListening(),
-    onEnd: () => {
-      if (interviewActive && !paused && !muted && !report) startListening();
-    },
-  });
+  const { speak, cancel, speaking, voiceReady } = useSpeechSynthesis({ volume });
+
+  useEffect(() => {
+    speakingRef.current = speaking;
+  }, [speaking]);
 
   const say = useCallback(async (text, options = {}) => {
     addTranscript("agent", text);
@@ -177,8 +177,8 @@ export default function NurseInterview() {
     });
     questionsRef.current = generated;
     setQuestions(generated);
+    window.setTimeout(() => startListening(), 300);
     await say(OPENING_TEXT, { status: "Opening" });
-    startListening();
   }
 
   async function askQuestion(index) {
@@ -192,12 +192,22 @@ export default function NurseInterview() {
     const intro = index > 0 && index % 3 === 0 ? `${SMALL_TALK[index % SMALL_TALK.length]} ` : "";
     const text = `${intro}Question ${index + 1}. ${question}`;
     await say(text, { status: `Question ${index + 1} of 10` });
-    startListening();
   }
 
   async function handleNurseFinal(text) {
-    if (!text || handlingAnswerRef.current || paused || muted || speaking || report) return;
+    if (!text || handlingAnswerRef.current || paused || muted || report) return;
     setInterim("");
+
+    if (speakingRef.current) {
+      if (!includesAny(text, DOUBT_KEYWORDS)) return;
+      if (Date.now() - lastInterruptRef.current < 2500) return;
+      lastInterruptRef.current = Date.now();
+      cancel();
+      addTranscript("nurse", text);
+      const question = questionsRef.current[currentIndexRef.current] || OPENING_TEXT;
+      await say(`Haan ${firstName}, main ruk gayi. Aap apna doubt pooch sakte hain. ${buildDoubtResponse(question)}`, { status: "Interrupted for doubt" });
+      return;
+    }
 
     if (awaitingReadyRef.current) {
       addTranscript("nurse", text);
@@ -301,8 +311,21 @@ export default function NurseInterview() {
   }
 
   function handleSilence() {
-    if (!interviewActive || paused || muted || speaking || awaitingReadyRef.current || report) return;
+    if (!interviewActive || paused || muted || speakingRef.current || awaitingReadyRef.current || report) return;
     say("Haan? Kuch kehna chahenge?", { status: "Silence prompt" });
+  }
+
+  async function handleInterim(text) {
+    setInterim(text);
+    if (!text || !speakingRef.current || paused || muted || report) return;
+    if (!includesAny(text, DOUBT_KEYWORDS)) return;
+    if (Date.now() - lastInterruptRef.current < 3500) return;
+    lastInterruptRef.current = Date.now();
+    cancel();
+    addTranscript("nurse", text);
+    const question = questionsRef.current[currentIndexRef.current] || OPENING_TEXT;
+    await say(`Haan ${firstName}, main ruk gayi. Boliye, kya doubt hai? ${buildDoubtResponse(question)}`, { status: "Interrupted for doubt" });
+    setInterim("");
   }
 
   const {
@@ -311,9 +334,9 @@ export default function NurseInterview() {
     listening,
     error: speechError,
   } = useSpeechRecognition({
-    disabled: !interviewActive || paused || muted || speaking || Boolean(report),
+    disabled: !interviewActive || paused || muted || Boolean(report),
     onFinal: handleNurseFinal,
-    onInterim: setInterim,
+    onInterim: handleInterim,
     onSilence: handleSilence,
   });
 
@@ -476,10 +499,10 @@ export default function NurseInterview() {
                 <div className="min-w-0 flex-1">
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <div>
-                      <p className="font-bold text-gray-950">Your Answer</p>
-                      <p className="text-xs text-gray-500">
-                        Bolte rahiye. Jab answer complete ho, Submit Answer press kariye.
-                      </p>
+                  <p className="font-bold text-gray-950">Your Answer</p>
+                  <p className="text-xs text-gray-500">
+                        Mic interview ke dauran always-on hai. Doubt ho to beech mein "doubt hai" ya "samjha nahi" bol sakte hain.
+                  </p>
                     </div>
                     <button
                       type="button"
@@ -490,7 +513,7 @@ export default function NurseInterview() {
                     </button>
                   </div>
                   <div className="min-h-24 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm leading-relaxed text-gray-900">
-                    {answerDraft || interim || (awaitingReadyRef.current ? "Say: haan / ready / taiyaar" : "Aapka spoken answer yahan live dikhega...")}
+                    {answerDraft || interim || (awaitingReadyRef.current ? "Say: haan / ready / taiyaar" : "Aapka spoken answer yahan live dikhega. Complete hone par Submit Answer press kariye...")}
                   </div>
                 </div>
                 <div className="w-full lg:w-72">

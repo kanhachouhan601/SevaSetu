@@ -47,7 +47,7 @@ export default function InterviewControls({
           </>
         )}
         <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${listening ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
-          Mic {listening ? "listening" : "idle"}
+          Mic {listening ? "always on" : "idle"}
         </span>
       </div>
 
