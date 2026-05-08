@@ -48,6 +48,7 @@ export default function NurseInterview() {
   const handlingAnswerRef = useRef(false);
   const speakingRef = useRef(false);
   const lastInterruptRef = useRef(0);
+  const answerSettleTimerRef = useRef(null);
 
   const [request, setRequest] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -126,6 +127,7 @@ export default function NurseInterview() {
   useEffect(() => {
     fetchRequest();
     return () => {
+      window.clearTimeout(answerSettleTimerRef.current);
       streamRef.current?.getTracks()?.forEach(track => track.stop());
       cancel();
     };
@@ -163,6 +165,7 @@ export default function NurseInterview() {
     transcriptRef.current = [];
     answerDraftRef.current = "";
     setAnswerDraft("");
+    window.clearTimeout(answerSettleTimerRef.current);
     setCurrentIndex(-1);
     currentIndexRef.current = -1;
     answersRef.current = [];
@@ -234,17 +237,19 @@ export default function NurseInterview() {
     const nextDraft = `${answerDraftRef.current ? `${answerDraftRef.current} ` : ""}${text}`.trim();
     answerDraftRef.current = nextDraft;
     setAnswerDraft(nextDraft);
+    window.clearTimeout(answerSettleTimerRef.current);
+    answerSettleTimerRef.current = window.setTimeout(() => {
+      submitCurrentAnswer();
+    }, 2200);
   }
 
   async function submitCurrentAnswer() {
     const index = currentIndexRef.current;
     if (awaitingReadyRef.current || index < 0 || handlingAnswerRef.current) return;
     const text = answerDraftRef.current.trim();
-    if (!text) {
-      await say("Haan, answer dene ke baad Submit Answer press kariye. Main sun rahi hoon.", { status: "Waiting for answer" });
-      return;
-    }
+    if (!text) return;
 
+    window.clearTimeout(answerSettleTimerRef.current);
     addTranscript("nurse", text);
     handlingAnswerRef.current = true;
     const nextAnswers = [...answersRef.current];
@@ -499,10 +504,10 @@ export default function NurseInterview() {
                 <div className="min-w-0 flex-1">
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <div>
-                  <p className="font-bold text-gray-950">Your Answer</p>
-                  <p className="text-xs text-gray-500">
+                      <p className="font-bold text-gray-950">Live Conversation</p>
+                      <p className="text-xs text-gray-500">
                         Mic interview ke dauran always-on hai. Doubt ho to beech mein "doubt hai" ya "samjha nahi" bol sakte hain.
-                  </p>
+                      </p>
                     </div>
                     <button
                       type="button"
@@ -513,7 +518,7 @@ export default function NurseInterview() {
                     </button>
                   </div>
                   <div className="min-h-24 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm leading-relaxed text-gray-900">
-                    {answerDraft || interim || (awaitingReadyRef.current ? "Say: haan / ready / taiyaar" : "Aapka spoken answer yahan live dikhega. Complete hone par Submit Answer press kariye...")}
+                    {answerDraft || interim || (awaitingReadyRef.current ? "Say: haan / ready / taiyaar" : "Aapka answer yahan live dikhega. Aap rukenge toh AI khud response dekar next question puchegi...")}
                   </div>
                 </div>
                 <div className="w-full lg:w-72">
@@ -524,8 +529,6 @@ export default function NurseInterview() {
                     canStart={canStart}
                     listening={listening}
                     volume={volume}
-                    answerReady={Boolean(answerDraft.trim()) && !awaitingReadyRef.current}
-                    onSubmitAnswer={submitCurrentAnswer}
                     onStart={startInterview}
                     onPauseToggle={togglePause}
                     onMuteToggle={toggleMute}
