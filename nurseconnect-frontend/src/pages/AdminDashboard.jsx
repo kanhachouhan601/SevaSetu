@@ -4,6 +4,7 @@ import {
 } from "recharts";
 import axios from "../api/axios";
 import { useAuth } from "../context/AuthContext";
+import { loadInterviewReports } from "../utils/geminiInterview";
 
 // ── Icons ────────────────────────────────────────────────────
 const icons = {
@@ -151,6 +152,7 @@ const TABS = [
   { id: "nurses", label: "Nurses", Icon: icons.Stethoscope },
   { id: "patients", label: "Patients", Icon: icons.Users },
   { id: "requests", label: "Requests", Icon: icons.Activity },
+  { id: "reports", label: "Interview Reports", Icon: icons.Activity },
   { id: "safety", label: "Safety", Icon: icons.Shield },
 ];
 
@@ -180,6 +182,8 @@ export default function AdminDashboard() {
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [safetyAlerts, setSafetyAlerts] = useState([]);
   const [loadingSafety, setLoadingSafety] = useState(false);
+  const [interviewReports, setInterviewReports] = useState([]);
+  const [expandedReportId, setExpandedReportId] = useState(null);
 
   // Fetch on mount
   useEffect(() => { fetchStats(); }, []);
@@ -187,6 +191,7 @@ export default function AdminDashboard() {
     if (activeTab === "nurses") fetchNurses();
     else if (activeTab === "patients") fetchPatients();
     else if (activeTab === "requests") fetchRequests();
+    else if (activeTab === "reports") fetchInterviewReports();
     else if (activeTab === "safety") fetchSafetyAlerts();
   }, [activeTab]);
 
@@ -219,6 +224,7 @@ export default function AdminDashboard() {
       // Flatten for display: merge profile + user data
       const mapped = rawNurses.map(n => ({
         _id: n._id,
+        userId: n.userId?._id,
         // ✅ FIX: name/email come from populated userId, not top-level
         name: n.userId?.name || "Unknown",
         email: n.userId?.email || "",
@@ -350,6 +356,39 @@ export default function AdminDashboard() {
       setNurseActionMsg({ type: "error", text });
       console.error("Approve failed:", text);
     }
+  }
+
+  function fetchInterviewReports() {
+    setInterviewReports(loadInterviewReports());
+    if (nurses.length === 0) fetchNurses();
+  }
+
+  function getReportNurseProfile(report) {
+    return nurses.find(nurse => (
+      nurse._id === report.nurseId ||
+      nurse.userId === report.nurseId ||
+      nurse.name === report.candidateName
+    ));
+  }
+
+  async function approveReportNurse(report) {
+    const profile = getReportNurseProfile(report);
+    if (!profile?._id) {
+      setNurseActionMsg({ type: "error", text: "Matching nurse profile not found. Open Nurses tab and approve manually." });
+      return;
+    }
+    await approveNurse(profile._id);
+    fetchInterviewReports();
+  }
+
+  async function rejectReportNurse(report) {
+    const profile = getReportNurseProfile(report);
+    if (!profile?._id) {
+      setNurseActionMsg({ type: "error", text: "Matching nurse profile not found. Open Nurses tab and reject manually." });
+      return;
+    }
+    await rejectNurse(profile._id);
+    fetchInterviewReports();
   }
 
   async function rejectNurse(id) {
@@ -845,6 +884,155 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ═══ INTERVIEW REPORTS TAB ═══ */}
+          {activeTab === "reports" && (
+            <div className="space-y-4">
+              {nurseActionMsg && (
+                <div className={`rounded-xl border px-4 py-3 text-sm font-medium ${
+                  nurseActionMsg.type === "success"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-red-200 bg-red-50 text-red-700"
+                }`}>
+                  {nurseActionMsg.text}
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">AI Video Interview Reports</h2>
+                  <p className="text-sm text-gray-500">Saved locally from Dr. NIDHI interview room on this browser</p>
+                </div>
+                <button onClick={fetchInterviewReports} className="text-xs font-semibold text-teal-600 hover:underline">Refresh</button>
+              </div>
+
+              {interviewReports.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-gray-200 bg-white p-10 text-center text-gray-400">
+                  <p className="text-2xl mb-2">🎥</p>
+                  <p className="text-sm">No completed interview reports on this device</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {interviewReports.map(report => {
+                    const expanded = expandedReportId === report.id;
+                    const recommendation = String(report.recommendation || "");
+                    const score = Number(report.overallScore || 0);
+                    const profile = getReportNurseProfile(report);
+                    return (
+                      <div key={report.id} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <div className="mb-2 flex flex-wrap items-center gap-2">
+                              <p className="font-bold text-gray-950">{report.candidateName || "Nurse Candidate"}</p>
+                              <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                                score >= 80 ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                : score >= 65 ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                : "bg-red-50 text-red-700 border border-red-200"
+                              }`}>
+                                Score {score}
+                              </span>
+                              <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                                recommendation.includes("Not") ? "bg-red-50 text-red-700 border border-red-200"
+                                : recommendation.includes("Strong") ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                : "bg-sky-50 text-sky-700 border border-sky-200"
+                              }`}>
+                                {report.recommendation || "Review Required"}
+                              </span>
+                              {profile?.status && <NurseBadge status={profile.status} />}
+                            </div>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                              <span>{report.interviewDate ? new Date(report.interviewDate).toLocaleString("en-IN") : "Date not available"}</span>
+                              <span>Transcript: {report.transcript?.length || 0}</span>
+                              <span>Attention events: {report.attentionEvents?.length || 0}</span>
+                              {report.patientProblem && <span className="max-w-[320px] truncate">Case: {report.patientProblem}</span>}
+                            </div>
+                            {report.adminNotes && (
+                              <p className="mt-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                                {report.adminNotes}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedReportId(expanded ? null : report.id)}
+                              className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                            >
+                              {expanded ? "Hide Details" : "View Details"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => approveReportNurse(report)}
+                              className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                            >
+                              Approve Nurse
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => rejectReportNurse(report)}
+                              className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </div>
+
+                        {expanded && (
+                          <div className="mt-4 space-y-4 border-t border-gray-100 pt-4">
+                            <div className="grid gap-2 sm:grid-cols-3">
+                              {Object.entries(report.scores || {}).map(([key, value]) => (
+                                <div key={key} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                                  <p className="text-[11px] font-semibold capitalize text-gray-500">{key.replace(/[A-Z]/g, m => ` ${m}`)}</p>
+                                  <p className="text-lg font-black text-gray-900">{value}</p>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3">
+                                <p className="text-xs font-bold text-emerald-800">Strengths</p>
+                                <ul className="mt-2 space-y-1 text-xs text-emerald-900">
+                                  {(report.strengths || []).map(item => <li key={item}>- {item}</li>)}
+                                </ul>
+                              </div>
+                              <div className="rounded-lg border border-amber-100 bg-amber-50 p-3">
+                                <p className="text-xs font-bold text-amber-800">Concerns</p>
+                                <ul className="mt-2 space-y-1 text-xs text-amber-900">
+                                  {(report.concerns || []).length ? report.concerns.map(item => <li key={item}>- {item}</li>) : <li>No concerns recorded.</li>}
+                                </ul>
+                              </div>
+                            </div>
+                            <div className="rounded-lg border border-red-100 bg-red-50 p-3">
+                              <p className="text-xs font-bold text-red-800">Attention Events</p>
+                              {(report.attentionEvents || []).length === 0 ? (
+                                <p className="mt-2 text-xs text-red-700">No attention events recorded.</p>
+                              ) : (
+                                <div className="mt-2 space-y-1">
+                                  {report.attentionEvents.map((event, index) => (
+                                    <p key={`${event.at}-${index}`} className="text-xs text-red-800">
+                                      {event.iso ? new Date(event.iso).toLocaleTimeString("en-IN") : ""} · {event.type}: {event.message}
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-100 bg-gray-50 p-3">
+                              <p className="mb-2 text-xs font-bold text-gray-700">Transcript</p>
+                              <div className="space-y-2">
+                                {(report.transcript || []).map((item, index) => (
+                                  <div key={item.id || index} className={`rounded-lg px-3 py-2 text-xs ${item.role === "agent" ? "bg-sky-50 text-sky-900" : "bg-emerald-50 text-emerald-900"}`}>
+                                    <span className="font-bold">{item.role === "agent" ? "Dr. NIDHI" : "Nurse"}:</span> {item.text}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
