@@ -4,6 +4,8 @@
 !.env.example
 nurseconnect-backend/.env
 nurseconnect-frontend/.env
+backend/.env
+frontend/.env
 
 # Dependencies
 node_modules/
@@ -15,6 +17,7 @@ build/
 # Runtime uploads and local files
 uploads/
 nurseconnect-backend/uploads/
+backend/uploads/
 
 # OS/editor files
 .DS_Store

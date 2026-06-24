@@ -25,7 +25,7 @@ This project is deployed as:
 
 ```txt
 SevaSetu/
-  nurseconnect-frontend/
+  frontend/
     src/
       api/axios.js
       components/LanguageSelector.jsx
@@ -42,7 +42,7 @@ SevaSetu/
     vercel.json
     package.json
 
-  nurseconnect-backend/
+  backend/
     src/
       config/db.js
       controllers/
@@ -65,7 +65,7 @@ SevaSetu/
 Frontend API client:
 
 ```txt
-nurseconnect-frontend/src/api/axios.js
+frontend/src/api/axios.js
 ```
 
 It reads:
@@ -91,7 +91,7 @@ http://localhost:3000
 Backend DB config:
 
 ```txt
-nurseconnect-backend/src/config/db.js
+backend/src/config/db.js
 ```
 
 It reads:
@@ -158,8 +158,8 @@ The root `.gitignore` protects:
 ```txt
 .env
 .env.*
-nurseconnect-backend/.env
-nurseconnect-frontend/.env
+backend/.env
+frontend/.env
 node_modules/
 dist/
 uploads/
@@ -196,10 +196,10 @@ Users can login/register and are redirected by role:
 Important files:
 
 ```txt
-nurseconnect-frontend/src/context/AuthContext.jsx
-nurseconnect-backend/src/controllers/auth.controller.js
-nurseconnect-backend/src/middleware/auth.middleware.js
-nurseconnect-backend/src/middleware/role.middleware.js
+frontend/src/context/AuthContext.jsx
+backend/src/controllers/auth.controller.js
+backend/src/middleware/auth.middleware.js
+backend/src/middleware/role.middleware.js
 ```
 
 Test flow:
@@ -228,9 +228,9 @@ Patient can submit a home nursing request with:
 Important files:
 
 ```txt
-nurseconnect-frontend/src/pages/PatientDashboard.jsx
-nurseconnect-backend/src/controllers/request.controller.js
-nurseconnect-backend/src/models/Request.js
+frontend/src/pages/PatientDashboard.jsx
+backend/src/controllers/request.controller.js
+backend/src/models/Request.js
 ```
 
 Test flow:
@@ -264,7 +264,7 @@ Current simple rules:
 Important file:
 
 ```txt
-nurseconnect-backend/src/controllers/request.controller.js
+backend/src/controllers/request.controller.js
 ```
 
 Test flow:
@@ -335,9 +335,9 @@ Long-term flow schedules a 25-30 minute AI clinical interview for nurse before f
 Important files:
 
 ```txt
-nurseconnect-frontend/src/pages/NurseInterview.jsx
-nurseconnect-backend/src/controllers/request.controller.js
-nurseconnect-backend/src/services/aiProvider.service.js
+frontend/src/pages/NurseInterview.jsx
+backend/src/controllers/request.controller.js
+backend/src/services/aiProvider.service.js
 ```
 
 Test flow:
@@ -394,7 +394,7 @@ When request is completed through OTP check-out, backend increments nurse earnin
 Important file:
 
 ```txt
-nurseconnect-backend/src/controllers/request.controller.js
+backend/src/controllers/request.controller.js
 ```
 
 Test flow:
@@ -446,10 +446,10 @@ Admin can approve safety review.
 Important files:
 
 ```txt
-nurseconnect-backend/src/models/SafetyAlert.js
-nurseconnect-backend/src/controllers/request.controller.js
-nurseconnect-backend/src/controllers/admin.controller.js
-nurseconnect-frontend/src/pages/AdminDashboard.jsx
+backend/src/models/SafetyAlert.js
+backend/src/controllers/request.controller.js
+backend/src/controllers/admin.controller.js
+frontend/src/pages/AdminDashboard.jsx
 ```
 
 Test flow:
@@ -525,7 +525,7 @@ Features:
 Important file:
 
 ```txt
-nurseconnect-frontend/src/pages/PatientDashboard.jsx
+frontend/src/pages/PatientDashboard.jsx
 ```
 
 Test flow:
@@ -560,8 +560,8 @@ Preference is saved in localStorage.
 Important files:
 
 ```txt
-nurseconnect-frontend/src/context/LanguageContext.jsx
-nurseconnect-frontend/src/components/LanguageSelector.jsx
+frontend/src/context/LanguageContext.jsx
+frontend/src/components/LanguageSelector.jsx
 ```
 
 Test flow:
@@ -592,10 +592,10 @@ Frontend polls notifications every 15 seconds.
 Important files:
 
 ```txt
-nurseconnect-backend/src/models/Notification.js
-nurseconnect-backend/src/controllers/notification.controller.js
-nurseconnect-frontend/src/pages/PatientDashboard.jsx
-nurseconnect-frontend/src/pages/NurseDashboard.jsx
+backend/src/models/Notification.js
+backend/src/controllers/notification.controller.js
+frontend/src/pages/PatientDashboard.jsx
+frontend/src/pages/NurseDashboard.jsx
 ```
 
 Test flow:
@@ -624,7 +624,7 @@ Admin can:
 Important file:
 
 ```txt
-nurseconnect-frontend/src/pages/AdminDashboard.jsx
+frontend/src/pages/AdminDashboard.jsx
 ```
 
 Test flow:
@@ -666,11 +666,11 @@ git push origin main
 Later commits:
 
 ```bash
-git add nurseconnect-frontend/.gitignore
+git add frontend/.gitignore
 git commit -m "Ignore Vercel local config"
 git push origin main
 
-git add nurseconnect-frontend/src
+git add frontend/src
 git commit -m "Add language selector"
 git push origin main
 ```
@@ -706,7 +706,7 @@ Render service settings:
 Service Type: Web Service
 Repo: kanhachouhan601/SevaSetu
 Branch: main
-Root Directory: nurseconnect-backend
+Root Directory: backend
 Runtime: Node
 Build Command: npm install
 Start Command: npm start
@@ -748,7 +748,7 @@ Expected:
 Vercel project linked with:
 
 ```bash
-cd /Users/apple/Documents/SevaSetu/nurseconnect-frontend
+cd /Users/apple/Documents/SevaSetu/frontend
 vercel link
 ```
 
@@ -779,7 +779,7 @@ https://sevasetu-frontend.vercel.app
 If GitHub auto deploy does not update frontend, run:
 
 ```bash
-cd /Users/apple/Documents/SevaSetu/nurseconnect-frontend
+cd /Users/apple/Documents/SevaSetu/frontend
 vercel --prod
 ```
 
@@ -804,14 +804,14 @@ git status --short
 ### Frontend build check
 
 ```bash
-cd /Users/apple/Documents/SevaSetu/nurseconnect-frontend
+cd /Users/apple/Documents/SevaSetu/frontend
 npm run build
 ```
 
 ### Backend syntax checks
 
 ```bash
-cd /Users/apple/Documents/SevaSetu/nurseconnect-backend
+cd /Users/apple/Documents/SevaSetu/backend
 node --check src/controllers/request.controller.js
 node --check src/controllers/admin.controller.js
 ```
@@ -821,14 +821,14 @@ node --check src/controllers/admin.controller.js
 Frontend:
 
 ```bash
-cd nurseconnect-frontend
+cd frontend
 npm run dev
 ```
 
 Backend:
 
 ```bash
-cd nurseconnect-backend
+cd backend
 npm run dev
 ```
 
@@ -849,7 +849,7 @@ git push origin main
 ### Vercel status and manual deploy
 
 ```bash
-cd /Users/apple/Documents/SevaSetu/nurseconnect-frontend
+cd /Users/apple/Documents/SevaSetu/frontend
 vercel ls sevasetu-frontend
 vercel --prod
 ```
@@ -883,7 +883,7 @@ Expected:
 If Vercel does not update:
 
 ```bash
-cd nurseconnect-frontend
+cd frontend
 vercel --prod
 ```
 
@@ -917,7 +917,7 @@ Cause: missing Vercel `VITE_API_URL`.
 Fix:
 
 ```bash
-cd nurseconnect-frontend
+cd frontend
 vercel env add VITE_API_URL production
 vercel --prod
 ```
@@ -956,7 +956,7 @@ If generic failure happens, check Render logs.
 Fix:
 
 ```bash
-cd nurseconnect-frontend
+cd frontend
 vercel --prod
 ```
 
@@ -967,7 +967,7 @@ Then hard refresh.
 Fix:
 
 ```bash
-git rm --cached nurseconnect-backend/.env
+git rm --cached backend/.env
 git commit -m "Remove env from git"
 git push origin main
 ```
@@ -1085,3 +1085,5 @@ Production hardening still recommended:
 - Legal review
 - Medical governance/SOP review
 - Monitoring and backups
+
+See `docs/Production_Readiness.md` for the current code-level production base and the external services still required before public launch.
